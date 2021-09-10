@@ -11,7 +11,7 @@ class AdminClient:
     def __init__(
         self,
         *,
-        base_url: Optional[URL],
+        base_url: URL,
         service_token: Optional[str] = None,
         conn_timeout_s: int = 300,
         read_timeout_s: int = 100,
@@ -42,7 +42,7 @@ class AdminClient:
     def _init(self) -> None:
         if self._client:
             return
-        if self._base_url is None:
+        if not self._base_url:
             return
         connector = aiohttp.TCPConnector(limit=self._conn_pool_size)
         timeout = aiohttp.ClientTimeout(
@@ -66,7 +66,7 @@ class AdminClient:
         self, method: str, path: str, **kwargs: Any
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         assert self._client
-        assert self._base_url is not None
+        assert self._base_url
         url = self._base_url / path
         async with self._client.request(method, url, **kwargs) as response:
             response.raise_for_status()
@@ -79,7 +79,7 @@ class AdminClient:
         credits_delta: Decimal,
         idempotency_key: str,
     ) -> None:
-        if self._base_url is None:
+        if not self._base_url:
             return
         payload = {"additional_quota": {"credits": str(credits_delta)}}
         async with self._request(
@@ -97,7 +97,7 @@ class AdminClient:
         credits: Decimal,
         idempotency_key: str,
     ) -> None:
-        if self._base_url is None:
+        if not self._base_url:
             return
         payload = {"user_name": username, "credits": str(credits)}
         async with self._request(
