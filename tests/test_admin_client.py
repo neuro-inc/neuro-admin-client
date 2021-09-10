@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from yarl import URL
+
 from neuro_admin_client import AdminClient
 
 from .conftest import AdminChargeRequest, AdminDebtRequest, AdminServer
@@ -11,7 +13,7 @@ class TestAdminClient:
         username = "username"
         amount = Decimal("20.11")
         key = "key"
-        async with AdminClient(base_url=None) as client:
+        async with AdminClient(base_url=URL()) as client:
             await client.change_user_credits(cluster_name, username, amount, key)
 
         assert client._client is None
@@ -21,7 +23,7 @@ class TestAdminClient:
         username = "username"
         amount = Decimal("20.11")
         key = "key"
-        async with AdminClient(base_url=None) as client:
+        async with AdminClient(base_url=URL()) as client:
             await client.add_debt(cluster_name, username, amount, key)
 
         assert client._client is None
