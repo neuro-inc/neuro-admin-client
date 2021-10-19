@@ -52,6 +52,13 @@ repos:
   rev: v1.6.6
   hooks:
   - id: actionlint-docker
+    args:
+    - -ignore
+    - 'SC2155:'
+    - -ignore
+    - 'SC2086:'
+    - -ignore
+    - 'SC1004:'
 - repo: https://github.com/sirosen/check-jsonschema
   rev: 0.5.1
   hooks:
