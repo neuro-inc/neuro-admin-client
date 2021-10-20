@@ -67,10 +67,6 @@ jobs:
     - name: Install dependencies
       run: |
         make setup
-        python -m pip install twine wheel
-    - name: Install dependencies
-      run: |
-        make setup
         python -m pip install twine build
     - name: Make dist
       run: |
