@@ -4,22 +4,17 @@ from yarl import URL
 
 from neuro_admin_client import AdminClient
 
-from .conftest import (
-    AdminAddSpendingRequest,
-    AdminDebtRequest,
-    AdminServer,
-    AdminUpdateCreditsRequest,
-)
+from .conftest import AdminChargeRequest, AdminDebtRequest, AdminServer
 
 
 class TestAdminClient:
-    async def test_update_user_credits_null(self) -> None:
+    async def test_charge_user_credits_null(self) -> None:
         cluster_name = "test-cluster"
         username = "username"
         amount = Decimal("20.11")
         key = "key"
         async with AdminClient(base_url=URL()) as client:
-            await client.update_user_credits(cluster_name, username, amount, key)
+            await client.change_user_credits(cluster_name, username, amount, key)
 
         assert client._client is None
 
@@ -33,30 +28,20 @@ class TestAdminClient:
 
         assert client._client is None
 
-    async def test_charge_user_null(self) -> None:
+    async def test_charge_user_credits(self, mock_admin_server: AdminServer) -> None:
         cluster_name = "test-cluster"
         username = "username"
         amount = Decimal("20.11")
         key = "key"
-        async with AdminClient(base_url=URL()) as client:
-            await client.charge_user(cluster_name, username, amount, key)
-
-        assert client._client is None
-
-    async def test_update_user_credits(self, mock_admin_server: AdminServer) -> None:
-        cluster_name = "test-cluster"
-        username = "username"
-        delta = Decimal("20.11")
-        key = "key"
         async with AdminClient(base_url=mock_admin_server.url) as client:
-            await client.update_user_credits(cluster_name, username, delta, key)
+            await client.change_user_credits(cluster_name, username, amount, key)
 
         assert len(mock_admin_server.requests) == 1
-        assert mock_admin_server.requests[0] == AdminUpdateCreditsRequest(
+        assert mock_admin_server.requests[0] == AdminChargeRequest(
             key,
             cluster_name,
             username,
-            delta,
+            amount,
         )
 
     async def test_add_debt(self, mock_admin_server: AdminServer) -> None:
@@ -73,20 +58,4 @@ class TestAdminClient:
             cluster_name,
             username,
             amount,
-        )
-
-    async def test_charge_user(self, mock_admin_server: AdminServer) -> None:
-        cluster_name = "test-cluster"
-        username = "username"
-        spending = Decimal("20.11")
-        key = "key"
-        async with AdminClient(base_url=mock_admin_server.url) as client:
-            await client.charge_user(cluster_name, username, spending, key)
-
-        assert len(mock_admin_server.requests) == 1
-        assert mock_admin_server.requests[0] == AdminAddSpendingRequest(
-            key,
-            cluster_name,
-            username,
-            spending,
         )

@@ -72,7 +72,7 @@ class AdminClient:
             response.raise_for_status()
             yield response
 
-    async def update_user_credits(
+    async def change_user_credits(
         self,
         cluster_name: str,
         username: str,
@@ -81,28 +81,10 @@ class AdminClient:
     ) -> None:
         if not self._base_url:
             return
-        payload = {"additional_credits": str(credits_delta)}
+        payload = {"additional_quota": {"credits": str(credits_delta)}}
         async with self._request(
             "PATCH",
-            f"clusters/{cluster_name}/users/{username}/balance",
-            json=payload,
-            params={"idempotency_key": idempotency_key},
-        ) as response:
-            response.raise_for_status()
-
-    async def charge_user(
-        self,
-        cluster_name: str,
-        username: str,
-        spending: Decimal,
-        idempotency_key: str,
-    ) -> None:
-        if not self._base_url:
-            return
-        payload = {"spending": str(spending)}
-        async with self._request(
-            "POST",
-            f"clusters/{cluster_name}/users/{username}/spending",
+            f"clusters/{cluster_name}/users/{username}/quota",
             json=payload,
             params={"idempotency_key": idempotency_key},
         ) as response:
