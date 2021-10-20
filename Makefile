@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-ISORT_TARGETS := neuro_admin_client setup.py tests
+ISORT_TARGETS := neuro_admin_client tests
 BLACK_TARGETS := $(ISORT_TARGETS)
 MYPY_TARGETS :=  $(ISORT_TARGETS)
 FLAKE8_TARGETS:= $(ISORT_TARGETS)
