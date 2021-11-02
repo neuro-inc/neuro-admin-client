@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime
 from decimal import Decimal
 from typing import (
     Any,
@@ -29,6 +30,7 @@ from neuro_admin_client.entities import (
     OrgUserWithInfo,
     Quota,
     User,
+    UserInfo,
 )
 
 
@@ -102,12 +104,22 @@ class AdminClient:
             yield response
 
     def _parse_user_payload(self, payload: Dict[str, Any]) -> User:
+        created_at = payload.get("created_at")
         return User(
             name=payload["name"],
             email=payload["email"],
             first_name=payload.get("first_name"),
             last_name=payload.get("last_name"),
-            created_at=payload.get("created_at"),
+            created_at=datetime.fromisoformat(created_at) if created_at else None,
+        )
+
+    def _parse_user_info_payload(self, payload: Dict[str, Any]) -> UserInfo:
+        created_at = payload.get("created_at")
+        return UserInfo(
+            email=payload["email"],
+            first_name=payload.get("first_name"),
+            last_name=payload.get("last_name"),
+            created_at=datetime.fromisoformat(created_at) if created_at else None,
         )
 
     async def list_users(self) -> List[User]:
@@ -170,7 +182,7 @@ class AdminClient:
         return clusters
 
     async def get_cluster(self, name: str) -> Cluster:
-        async with self._request("GET", f"users/{name}") as resp:
+        async with self._request("GET", f"clusters/{name}") as resp:
             resp.raise_for_status()
             raw_cluster = await resp.json()
             return self._parse_cluster_payload(raw_cluster)
@@ -212,7 +224,8 @@ class AdminClient:
             cluster_name=cluster_name,
         )
         if "user_info" in payload:
-            user_info = self._parse_user_payload(payload["user_info"])
+
+            user_info = self._parse_user_info_payload(payload["user_info"])
             cluster_user = cluster_user.add_info(user_info)
         return cluster_user
 
@@ -315,7 +328,7 @@ class AdminClient:
 
         async with self._request(
             "POST",
-            f"clusters/{cluster_name}/users/",
+            f"clusters/{cluster_name}/users",
             json=payload,
             params={"with_user_info": _to_query_bool(with_user_info)},
         ) as resp:
@@ -353,7 +366,7 @@ class AdminClient:
         }
 
         async with self._request(
-            "POST",
+            "PUT",
             f"clusters/{cluster_user.cluster_name}/users/{cluster_user.user_name}",
             json=payload,
             params={"with_user_info": _to_query_bool(with_user_info)},
@@ -731,7 +744,7 @@ class AdminClient:
             org_name=org_name,
         )
         if "user_info" in payload:
-            user_info = self._parse_user_payload(payload["user_info"])
+            user_info = self._parse_user_info_payload(payload["user_info"])
             org_user = org_user.add_info(user_info)
         return org_user
 
@@ -818,7 +831,7 @@ class AdminClient:
 
         async with self._request(
             "POST",
-            f"orgs/{org_name}/users/",
+            f"orgs/{org_name}/users",
             json=payload,
             params={"with_user_info": _to_query_bool(with_user_info)},
         ) as resp:
@@ -847,7 +860,7 @@ class AdminClient:
         }
 
         async with self._request(
-            "POST",
+            "PUT",
             f"orgs/{org_user.org_name}/users/{org_user.user_name}",
             json=payload,
             params={"with_user_info": _to_query_bool(with_user_info)},

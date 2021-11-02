@@ -6,6 +6,14 @@ from typing import Optional
 
 
 @dataclass(frozen=True)
+class UserInfo:
+    email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+@dataclass(frozen=True)
 class User:
     name: str
     email: str
@@ -43,8 +51,7 @@ class OrgUser:
     user_name: str
     role: OrgUserRoleType
 
-    def add_info(self, user_info: User) -> "OrgUserWithInfo":
-        assert user_info.name == self.user_name
+    def add_info(self, user_info: UserInfo) -> "OrgUserWithInfo":
         return OrgUserWithInfo(
             **asdict(self),
             user_info=user_info,
@@ -53,7 +60,7 @@ class OrgUser:
 
 @dataclass(frozen=True)
 class OrgUserWithInfo(OrgUser):
-    user_info: User
+    user_info: UserInfo
 
 
 @dataclass(frozen=True)
@@ -95,8 +102,7 @@ class ClusterUser:
     balance: Balance
     org_name: Optional[str]
 
-    def add_info(self, user_info: User) -> "ClusterUserWithInfo":
-        assert user_info.name == self.user_name
+    def add_info(self, user_info: UserInfo) -> "ClusterUserWithInfo":
         return ClusterUserWithInfo(
             **asdict(self),
             user_info=user_info,
@@ -105,4 +111,4 @@ class ClusterUser:
 
 @dataclass(frozen=True)
 class ClusterUserWithInfo(ClusterUser):
-    user_info: User
+    user_info: UserInfo
