@@ -9,6 +9,7 @@ from typing import (
     Literal,
     Optional,
     Sequence,
+    Tuple,
     Union,
     overload,
 )
@@ -122,6 +123,18 @@ class AdminClient:
             created_at=datetime.fromisoformat(created_at) if created_at else None,
         )
 
+    def _parse_user_cluster_payload(
+        self, payload: Dict[str, Any], user_name: str
+    ) -> ClusterUser:
+        return ClusterUser(
+            user_name=user_name,
+            role=ClusterUserRoleType(payload["role"]),
+            quota=self._parse_quota(payload.get("quota")),
+            balance=self._parse_balance(payload.get("balance")),
+            org_name=None,
+            cluster_name=payload["cluster_name"],
+        )
+
     async def list_users(self) -> List[User]:
         async with self._request("GET", "users") as resp:
             resp.raise_for_status()
@@ -134,6 +147,19 @@ class AdminClient:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_user_payload(raw_user)
+
+    async def get_user_with_clusters(self, name: str) -> Tuple[User, List[ClusterUser]]:
+        async with self._request(
+            "GET", f"users/{name}", params={"include": "clusters"}
+        ) as resp:
+            resp.raise_for_status()
+            payload = await resp.json()
+            user = self._parse_user_payload(payload)
+            clusters = [
+                self._parse_user_cluster_payload(user_cluster_raw, user.name)
+                for user_cluster_raw in payload["clusters"]
+            ]
+        return user, clusters
 
     async def create_user(
         self,

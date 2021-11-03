@@ -3,7 +3,7 @@ import datetime
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
-from typing import Any, AsyncIterator, Dict, List, Mapping, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import aiohttp
 import aiohttp.web
@@ -59,7 +59,7 @@ class AdminServer:
         assert self.address
         return URL(f"http://{self.address.host}:{self.address.port}/api/v1/")
 
-    def _serialize_user(self, user: User) -> Mapping[str, Any]:
+    def _serialize_user(self, user: User) -> Dict[str, Any]:
         return {
             "name": user.name,
             "email": user.email,
@@ -67,6 +67,12 @@ class AdminServer:
             "last_name": user.last_name,
             "created_at": user.created_at.isoformat() if user.created_at else None,
         }
+
+    def _serialize_user_cluster(self, user: ClusterUser) -> Dict[str, Any]:
+        res = self._serialize_cluster_user(user, False)
+        res.pop("user_name")
+        res["cluster_name"] = user.cluster_name
+        return res
 
     async def handle_user_post(
         self, request: aiohttp.web.Request
@@ -88,7 +94,14 @@ class AdminServer:
         user_name = request.match_info["uname"]
         for user in self.users:
             if user.name == user_name:
-                return aiohttp.web.json_response(self._serialize_user(user))
+                payload = self._serialize_user(user)
+                if "clusters" in request.query.getall("include", []):
+                    payload["clusters"] = [
+                        self._serialize_user_cluster(cluster_user)
+                        for cluster_user in self.cluster_users
+                        if cluster_user.user_name == user_name
+                    ]
+                return aiohttp.web.json_response(payload)
         raise aiohttp.web.HTTPNotFound
 
     async def handle_user_list(
@@ -97,7 +110,7 @@ class AdminServer:
         resp = [self._serialize_user(user) for user in self.users]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_org(self, org: Org) -> Mapping[str, Any]:
+    def _serialize_org(self, org: Org) -> Dict[str, Any]:
         return {
             "name": org.name,
         }
@@ -127,7 +140,7 @@ class AdminServer:
         resp = [self._serialize_org(org) for org in self.orgs]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_cluster(self, cluster: Cluster) -> Mapping[str, Any]:
+    def _serialize_cluster(self, cluster: Cluster) -> Dict[str, Any]:
         return {
             "name": cluster.name,
         }
@@ -159,7 +172,7 @@ class AdminServer:
 
     def _serialize_cluster_user(
         self, cluster_user: ClusterUser, with_info: bool
-    ) -> Mapping[str, Any]:
+    ) -> Dict[str, Any]:
         res: Dict[str, Any] = {
             "user_name": cluster_user.user_name,
             "role": cluster_user.role.value,
@@ -393,9 +406,7 @@ class AdminServer:
         ]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_org_user(
-        self, org_user: OrgUser, with_info: bool
-    ) -> Mapping[str, Any]:
+    def _serialize_org_user(self, org_user: OrgUser, with_info: bool) -> Dict[str, Any]:
         res: Dict[str, Any] = {
             "user_name": org_user.user_name,
             "role": org_user.role.value,
@@ -489,7 +500,7 @@ class AdminServer:
         ]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_org_cluster(self, org_cluster: OrgCluster) -> Mapping[str, Any]:
+    def _serialize_org_cluster(self, org_cluster: OrgCluster) -> Dict[str, Any]:
         return {
             "org_name": org_cluster.org_name,
         }
