@@ -340,7 +340,7 @@ class AdminClient:
         balance: Balance,
         with_user_info: bool = False,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
-        payload = {
+        payload: Dict[str, Any] = {
             "user_name": user_name,
             "role": role.value,
             "quota": {},
@@ -378,7 +378,7 @@ class AdminClient:
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: bool = False
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
-        payload = {
+        payload: Dict[str, Any] = {
             "user_name": cluster_user.user_name,
             "role": cluster_user.role.value,
             "quota": {},
