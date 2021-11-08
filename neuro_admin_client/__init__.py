@@ -343,14 +343,15 @@ class AdminClient:
         payload = {
             "user_name": user_name,
             "role": role.value,
-            "quota": {"total_running_jobs": quota.total_running_jobs},
-            "balance": {
-                "credits": str(balance.credits) if balance.credits else None,
-                "spent_credits": str(balance.spent_credits)
-                if balance.spent_credits
-                else None,
-            },
+            "quota": {},
+            "balance": {},
         }
+        if quota.total_running_jobs:
+            payload["quota"]["total_running_jobs"] = quota.total_running_jobs
+        if balance.credits:
+            payload["balance"]["credits"] = str(balance.credits)
+        if balance.spent_credits:
+            payload["balance"]["spent_credits"] = str(balance.spent_credits)
 
         async with self._request(
             "POST",
@@ -380,16 +381,19 @@ class AdminClient:
         payload = {
             "user_name": cluster_user.user_name,
             "role": cluster_user.role.value,
-            "quota": {"total_running_jobs": cluster_user.quota.total_running_jobs},
-            "balance": {
-                "credits": str(cluster_user.balance.credits)
-                if cluster_user.balance.credits
-                else None,
-                "spent_credits": str(cluster_user.balance.spent_credits)
-                if cluster_user.balance.spent_credits
-                else None,
-            },
+            "quota": {},
+            "balance": {},
         }
+        if cluster_user.quota.total_running_jobs:
+            payload["quota"][
+                "total_running_jobs"
+            ] = cluster_user.quota.total_running_jobs
+        if cluster_user.balance.credits:
+            payload["balance"]["credits"] = str(cluster_user.balance.credits)
+        if cluster_user.balance.spent_credits:
+            payload["balance"]["spent_credits"] = str(
+                cluster_user.balance.spent_credits
+            )
 
         async with self._request(
             "PUT",
