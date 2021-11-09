@@ -346,11 +346,11 @@ class AdminClient:
             "quota": {},
             "balance": {},
         }
-        if quota.total_running_jobs:
+        if quota.total_running_jobs is not None:
             payload["quota"]["total_running_jobs"] = quota.total_running_jobs
-        if balance.credits:
+        if balance.credits is not None:
             payload["balance"]["credits"] = str(balance.credits)
-        if balance.spent_credits:
+        if balance.spent_credits is not None:
             payload["balance"]["spent_credits"] = str(balance.spent_credits)
 
         async with self._request(
@@ -384,13 +384,13 @@ class AdminClient:
             "quota": {},
             "balance": {},
         }
-        if cluster_user.quota.total_running_jobs:
+        if cluster_user.quota.total_running_jobs is not None:
             payload["quota"][
                 "total_running_jobs"
             ] = cluster_user.quota.total_running_jobs
-        if cluster_user.balance.credits:
+        if cluster_user.balance.credits is not None:
             payload["balance"]["credits"] = str(cluster_user.balance.credits)
-        if cluster_user.balance.spent_credits:
+        if cluster_user.balance.spent_credits is not None:
             payload["balance"]["spent_credits"] = str(
                 cluster_user.balance.spent_credits
             )
