@@ -501,18 +501,38 @@ class AdminServer:
         return aiohttp.web.json_response(resp)
 
     def _serialize_org_cluster(self, org_cluster: OrgCluster) -> Dict[str, Any]:
-        return {
+        res: Dict[str, Any] = {
             "org_name": org_cluster.org_name,
+            "quota": {},
+            "balance": {
+                "spent_credits": str(org_cluster.balance.spent_credits),
+            },
         }
+        if org_cluster.quota.total_running_jobs is not None:
+            res["quota"]["total_running_jobs"] = org_cluster.quota.total_running_jobs
+        if org_cluster.balance.credits is not None:
+            res["balance"]["credits"] = str(org_cluster.balance.credits)
+        return res
 
     async def handle_org_cluster_post(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         payload = await request.json()
+        credits_raw = payload.get("balance", {}).get("credits")
+        spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
         new_org_cluster = OrgCluster(
             cluster_name=cluster_name,
             org_name=payload["org_name"],
+            quota=Quota(
+                total_running_jobs=payload.get("quota", {}).get("total_running_jobs")
+            ),
+            balance=Balance(
+                credits=Decimal(credits_raw) if credits_raw else None,
+                spent_credits=Decimal(spend_credits_raw)
+                if spend_credits_raw
+                else Decimal(0),
+            ),
         )
         self.org_clusters.append(new_org_cluster)
         return aiohttp.web.json_response(
@@ -527,9 +547,20 @@ class AdminServer:
         cluster_name = request.match_info["cname"]
         org_name = request.match_info["oname"]
         payload = await request.json()
+        credits_raw = payload.get("balance", {}).get("credits")
+        spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
         new_org_cluster = OrgCluster(
             cluster_name=cluster_name,
             org_name=payload["org_name"],
+            quota=Quota(
+                total_running_jobs=payload.get("quota", {}).get("total_running_jobs")
+            ),
+            balance=Balance(
+                credits=Decimal(credits_raw) if credits_raw else None,
+                spent_credits=Decimal(spend_credits_raw)
+                if spend_credits_raw
+                else Decimal(0),
+            ),
         )
         assert new_org_cluster.org_name == org_name
         self.org_clusters = [

@@ -64,12 +64,6 @@ class OrgUserWithInfo(OrgUser):
 
 
 @dataclass(frozen=True)
-class OrgCluster:
-    org_name: str
-    cluster_name: str
-
-
-@dataclass(frozen=True)
 class Balance:
     credits: Optional[Decimal] = None
     spent_credits: Decimal = Decimal(0)
@@ -78,6 +72,14 @@ class Balance:
 @dataclass(frozen=True)
 class Quota:
     total_running_jobs: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class OrgCluster:
+    org_name: str
+    cluster_name: str
+    balance: Balance
+    quota: Quota
 
 
 @unique

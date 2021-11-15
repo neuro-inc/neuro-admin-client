@@ -554,9 +554,10 @@ class TestAdminClient:
             res_org = await client.create_org_cluster(
                 cluster_name="test", org_name="test_org"
             )
-            res_org = await client.update_org_cluster(res_org)
+            new_org_cluster = replace(res_org, balance=Balance(credits=Decimal(22)))
+            await client.update_org_cluster(new_org_cluster)
 
-        assert mock_admin_server.org_clusters == [res_org]
+        assert mock_admin_server.org_clusters == [new_org_cluster]
 
     async def test_list_org_clusters(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.orgs = [
@@ -576,10 +577,14 @@ class TestAdminClient:
             OrgCluster(
                 cluster_name="cluster",
                 org_name="test1",
+                balance=Balance(),
+                quota=Quota(),
             ),
             OrgCluster(
                 cluster_name="cluster",
                 org_name="test2",
+                balance=Balance(credits=Decimal("20")),
+                quota=Quota(total_running_jobs=22),
             ),
         ]
 
@@ -607,10 +612,14 @@ class TestAdminClient:
             OrgCluster(
                 cluster_name="cluster",
                 org_name="test1",
+                balance=Balance(),
+                quota=Quota(),
             ),
             OrgCluster(
                 cluster_name="cluster",
                 org_name="test2",
+                balance=Balance(credits=Decimal("20")),
+                quota=Quota(total_running_jobs=22),
             ),
         ]
 
@@ -643,10 +652,14 @@ class TestAdminClient:
             OrgCluster(
                 cluster_name="cluster",
                 org_name="test1",
+                balance=Balance(),
+                quota=Quota(),
             ),
             OrgCluster(
                 cluster_name="cluster",
                 org_name="test2",
+                balance=Balance(credits=Decimal("20")),
+                quota=Quota(total_running_jobs=22),
             ),
         ]
 
