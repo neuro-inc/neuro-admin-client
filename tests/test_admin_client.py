@@ -794,3 +794,73 @@ class TestAdminClient:
             assert mock_admin_server.debts[0].cluster_name == "cluster"
             assert mock_admin_server.debts[0].user_name == "test1"
             assert mock_admin_server.debts[0].credits == Decimal(15)
+
+    async def test_patch_org_cluster_quota(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+            ),
+        ]
+        mock_admin_server.clusters = [
+            Cluster(
+                name="cluster",
+            ),
+        ]
+        mock_admin_server.org_clusters = [
+            OrgCluster(
+                org_name="org",
+                cluster_name="cluster",
+                balance=Balance(),
+                quota=Quota(total_running_jobs=10),
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org_cluster = await client.update_org_cluster_quota(
+                cluster_name="cluster",
+                org_name="org",
+                quota=Quota(total_running_jobs=15),
+            )
+            assert org_cluster.quota.total_running_jobs == 15
+
+            org_cluster = await client.update_org_cluster_quota_by_delta(
+                cluster_name="cluster",
+                org_name="org",
+                delta=Quota(total_running_jobs=10),
+            )
+            assert org_cluster.quota.total_running_jobs == 25
+
+    async def test_patch_org_cluster_balance(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+            ),
+        ]
+        mock_admin_server.clusters = [
+            Cluster(
+                name="cluster",
+            ),
+        ]
+        mock_admin_server.org_clusters = [
+            OrgCluster(
+                org_name="org",
+                cluster_name="cluster",
+                balance=Balance(credits=Decimal(10)),
+                quota=Quota(),
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org_cluster = await client.update_org_cluster_balance(
+                cluster_name="cluster", org_name="org", credits=Decimal(15)
+            )
+            assert org_cluster.balance.credits == Decimal(15)
+
+            org_cluster = await client.update_org_cluster_balance_by_delta(
+                cluster_name="cluster", org_name="org", delta=Decimal(10)
+            )
+            assert org_cluster.balance.credits == Decimal(25)

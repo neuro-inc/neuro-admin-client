@@ -755,6 +755,96 @@ class AdminClient:
         ) as resp:
             resp.raise_for_status()
 
+    async def update_org_cluster_quota(
+        self,
+        cluster_name: str,
+        org_name: str,
+        quota: Quota,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        payload = {"quota": {"total_running_jobs": quota.total_running_jobs}}
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        async with self._request(
+            "PATCH",
+            f"clusters/{cluster_name}/orgs/{org_name}/quota",
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org_cluster = await resp.json()
+            return self._parse_org_cluster(cluster_name, raw_org_cluster)
+
+    async def update_org_cluster_quota_by_delta(
+        self,
+        cluster_name: str,
+        org_name: str,
+        delta: Quota,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        payload = {"additional_quota": {"total_running_jobs": delta.total_running_jobs}}
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        async with self._request(
+            "PATCH",
+            f"clusters/{cluster_name}/orgs/{org_name}/quota",
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org_cluster = await resp.json()
+            return self._parse_org_cluster(cluster_name, raw_org_cluster)
+
+    async def update_org_cluster_balance(
+        self,
+        cluster_name: str,
+        org_name: str,
+        credits: Optional[Decimal],
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        payload = {
+            "credits": str(credits) if credits else None,
+        }
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        async with self._request(
+            "PATCH",
+            f"clusters/{cluster_name}/orgs/{org_name}/balance",
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org_cluster = await resp.json()
+            return self._parse_org_cluster(cluster_name, raw_org_cluster)
+
+    async def update_org_cluster_balance_by_delta(
+        self,
+        cluster_name: str,
+        org_name: str,
+        delta: Decimal,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        payload = {"additional_credits": str(delta)}
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        async with self._request(
+            "PATCH",
+            f"clusters/{cluster_name}/orgs/{org_name}/balance",
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org_cluster = await resp.json()
+            return self._parse_org_cluster(cluster_name, raw_org_cluster)
+
     def _parse_org_payload(self, payload: Dict[str, Any]) -> Org:
         return Org(
             name=payload["name"],
