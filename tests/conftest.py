@@ -854,6 +854,7 @@ async def mock_admin_server(
                 aiohttp.web.post(
                     "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/spending",
                     admin_server.handle_cluster_user_add_spending,
+                ),
                 # patch org quota endpoints:
                 aiohttp.web.patch(
                     "/api/v1/clusters/{cname}/orgs/{oname}/balance",

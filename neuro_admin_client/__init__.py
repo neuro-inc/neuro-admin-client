@@ -131,7 +131,7 @@ class AdminClient:
             role=ClusterUserRoleType(payload["role"]),
             quota=self._parse_quota(payload.get("quota")),
             balance=self._parse_balance(payload.get("balance")),
-            org_name=None,
+            org_name=payload.get("org_name"),
             cluster_name=payload["cluster_name"],
         )
 
