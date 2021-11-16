@@ -131,7 +131,7 @@ class AdminClient:
             role=ClusterUserRoleType(payload["role"]),
             quota=self._parse_quota(payload.get("quota")),
             balance=self._parse_balance(payload.get("balance")),
-            org_name=None,
+            org_name=payload.get("org_name"),
             cluster_name=payload["cluster_name"],
         )
 
@@ -246,11 +246,10 @@ class AdminClient:
             role=ClusterUserRoleType(payload["role"]),
             quota=self._parse_quota(payload.get("quota")),
             balance=self._parse_balance(payload.get("balance")),
-            org_name=None,
+            org_name=payload.get("org_name"),
             cluster_name=cluster_name,
         )
         if "user_info" in payload:
-
             user_info = self._parse_user_info_payload(payload["user_info"])
             cluster_user = cluster_user.add_info(user_info)
         return cluster_user
@@ -285,22 +284,38 @@ class AdminClient:
 
     @overload
     async def get_cluster_user(
-        self, cluster_name: str, user_name: str, with_user_info: Literal[True]
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: Literal[True] = ...,
+        org_name: Optional[str] = None,
     ) -> ClusterUserWithInfo:
         ...
 
     @overload
     async def get_cluster_user(
-        self, cluster_name: str, user_name: str, with_user_info: Literal[False] = ...
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
     ) -> ClusterUser:
         ...
 
     async def get_cluster_user(
-        self, cluster_name: str, user_name: str, with_user_info: bool = False
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}"
+        else:
+            url = f"clusters/{cluster_name}/users/{user_name}"
         async with self._request(
             "GET",
-            f"clusters/{cluster_name}/users/{user_name}",
+            url,
             params={"with_user_info": _to_query_bool(with_user_info)},
         ) as resp:
             resp.raise_for_status()
@@ -316,6 +331,7 @@ class AdminClient:
         quota: Quota,
         balance: Balance,
         with_user_info: Literal[True],
+        org_name: Optional[str] = None,
     ) -> ClusterUserWithInfo:
         ...
 
@@ -328,6 +344,7 @@ class AdminClient:
         quota: Quota,
         balance: Balance,
         with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
     ) -> ClusterUser:
         ...
 
@@ -339,6 +356,7 @@ class AdminClient:
         quota: Quota,
         balance: Balance,
         with_user_info: bool = False,
+        org_name: Optional[str] = None,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
         payload: Dict[str, Any] = {
             "user_name": user_name,
@@ -346,6 +364,8 @@ class AdminClient:
             "quota": {},
             "balance": {},
         }
+        if org_name:
+            payload["org_name"] = org_name
         if quota.total_running_jobs is not None:
             payload["quota"]["total_running_jobs"] = quota.total_running_jobs
         if balance.credits is not None:
@@ -384,6 +404,8 @@ class AdminClient:
             "quota": {},
             "balance": {},
         }
+        if cluster_user.org_name:
+            payload["org_name"] = cluster_user.org_name
         if cluster_user.quota.total_running_jobs is not None:
             payload["quota"][
                 "total_running_jobs"
@@ -394,10 +416,17 @@ class AdminClient:
             payload["balance"]["spent_credits"] = str(
                 cluster_user.balance.spent_credits
             )
+        if cluster_user.org_name:
+            url = (
+                f"clusters/{cluster_user.cluster_name}/orgs/"
+                f"{cluster_user.org_name}/users/{cluster_user.user_name}"
+            )
+        else:
+            url = f"clusters/{cluster_user.cluster_name}/users/{cluster_user.user_name}"
 
         async with self._request(
             "PUT",
-            f"clusters/{cluster_user.cluster_name}/users/{cluster_user.user_name}",
+            url,
             json=payload,
             params={"with_user_info": _to_query_bool(with_user_info)},
         ) as resp:
@@ -405,10 +434,16 @@ class AdminClient:
             raw_user = await resp.json()
             return self._parse_cluster_user(cluster_user.cluster_name, raw_user)
 
-    async def delete_cluster_user(self, cluster_name: str, user_name: str) -> None:
+    async def delete_cluster_user(
+        self, cluster_name: str, user_name: str, org_name: Optional[str] = None
+    ) -> None:
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}"
+        else:
+            url = f"clusters/{cluster_name}/users/{user_name}"
         async with self._request(
             "DELETE",
-            f"clusters/{cluster_name}/users/{user_name}",
+            url,
         ) as resp:
             resp.raise_for_status()
 
@@ -421,6 +456,7 @@ class AdminClient:
         *,
         with_user_info: Literal[True],
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUserWithInfo:
         ...
 
@@ -433,6 +469,7 @@ class AdminClient:
         *,
         with_user_info: Literal[False] = ...,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUser:
         ...
 
@@ -444,6 +481,7 @@ class AdminClient:
         *,
         with_user_info: bool = False,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
         payload = {"quota": {"total_running_jobs": quota.total_running_jobs}}
         params = {
@@ -451,9 +489,13 @@ class AdminClient:
         }
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/quota"
+        else:
+            url = f"clusters/{cluster_name}/users/{user_name}/quota"
         async with self._request(
             "PATCH",
-            f"clusters/{cluster_name}/users/{user_name}/quota",
+            url,
             json=payload,
             params=params,
         ) as resp:
@@ -470,6 +512,7 @@ class AdminClient:
         *,
         with_user_info: Literal[True],
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUserWithInfo:
         ...
 
@@ -482,6 +525,7 @@ class AdminClient:
         *,
         with_user_info: Literal[False] = ...,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUser:
         ...
 
@@ -493,6 +537,7 @@ class AdminClient:
         *,
         with_user_info: bool = False,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
         payload = {"additional_quota": {"total_running_jobs": delta.total_running_jobs}}
         params = {
@@ -500,9 +545,13 @@ class AdminClient:
         }
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/quota"
+        else:
+            url = f"clusters/{cluster_name}/users/{user_name}/quota"
         async with self._request(
             "PATCH",
-            f"clusters/{cluster_name}/users/{user_name}/quota",
+            url,
             json=payload,
             params=params,
         ) as resp:
@@ -519,6 +568,7 @@ class AdminClient:
         *,
         with_user_info: Literal[True],
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUserWithInfo:
         ...
 
@@ -531,6 +581,7 @@ class AdminClient:
         *,
         with_user_info: Literal[False] = ...,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUser:
         ...
 
@@ -542,6 +593,7 @@ class AdminClient:
         *,
         with_user_info: bool = False,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
         payload = {
             "credits": str(credits) if credits else None,
@@ -551,9 +603,13 @@ class AdminClient:
         }
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/balance"
+        else:
+            url = f"clusters/{cluster_name}/users/{user_name}/balance"
         async with self._request(
             "PATCH",
-            f"clusters/{cluster_name}/users/{user_name}/balance",
+            url,
             json=payload,
             params=params,
         ) as resp:
@@ -570,6 +626,7 @@ class AdminClient:
         *,
         with_user_info: Literal[True],
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUserWithInfo:
         ...
 
@@ -582,6 +639,7 @@ class AdminClient:
         *,
         with_user_info: Literal[False] = ...,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUser:
         ...
 
@@ -593,6 +651,7 @@ class AdminClient:
         *,
         with_user_info: bool = False,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
         payload = {"additional_credits": str(delta)}
         params = {
@@ -600,9 +659,13 @@ class AdminClient:
         }
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/balance"
+        else:
+            url = f"clusters/{cluster_name}/users/{user_name}/balance"
         async with self._request(
             "PATCH",
-            f"clusters/{cluster_name}/users/{user_name}/balance",
+            url,
             json=payload,
             params=params,
         ) as resp:
@@ -619,6 +682,7 @@ class AdminClient:
         *,
         with_user_info: Literal[True],
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUserWithInfo:
         ...
 
@@ -631,6 +695,7 @@ class AdminClient:
         *,
         with_user_info: Literal[False] = ...,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> ClusterUser:
         ...
 
@@ -642,6 +707,7 @@ class AdminClient:
         *,
         with_user_info: bool = False,
         idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
     ) -> Union[ClusterUser, ClusterUserWithInfo]:
         payload = {"spending": str(amount)}
         params = {
@@ -649,9 +715,13 @@ class AdminClient:
         }
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/spending"
+        else:
+            url = f"clusters/{cluster_name}/users/{user_name}/spending"
         async with self._request(
             "POST",
-            f"clusters/{cluster_name}/users/{user_name}/spending",
+            url,
             json=payload,
             params=params,
         ) as resp:

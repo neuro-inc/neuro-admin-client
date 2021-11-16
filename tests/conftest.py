@@ -227,9 +227,14 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         user_name = request.match_info["uname"]
+        org_name = request.match_info.get("oname")
         payload = await request.json()
         credits_raw = payload["balance"].get("credits")
         spend_credits_raw = payload["balance"].get("spend_credits_raw")
+
+        assert user_name == payload["user_name"]
+        assert org_name == payload.get("org_name")
+
         new_cluster_user = ClusterUser(
             cluster_name=cluster_name,
             user_name=payload["user_name"],
@@ -247,7 +252,9 @@ class AdminServer:
         self.cluster_users = [
             user
             for user in self.cluster_users
-            if user.cluster_name != cluster_name or user.user_name != user_name
+            if user.cluster_name != cluster_name
+            or user.user_name != user_name
+            or user.org_name != org_name
         ]
         self.cluster_users.append(new_cluster_user)
         return aiohttp.web.json_response(
@@ -262,10 +269,15 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         user_name = request.match_info["uname"]
+        org_name = request.match_info.get("oname")
         payload = await request.json()
 
         for index, user in enumerate(self.cluster_users):
-            if user.cluster_name == cluster_name and user.user_name == user_name:
+            if (
+                user.cluster_name == cluster_name
+                and user.user_name == user_name
+                and user.org_name == org_name
+            ):
                 quota = user.quota
                 if "quota" in payload:
                     quota = replace(
@@ -296,10 +308,15 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         user_name = request.match_info["uname"]
+        org_name = request.match_info.get("oname")
         payload = await request.json()
 
         for index, user in enumerate(self.cluster_users):
-            if user.cluster_name == cluster_name and user.user_name == user_name:
+            if (
+                user.cluster_name == cluster_name
+                and user.user_name == user_name
+                and user.org_name == org_name
+            ):
                 balance = user.balance
                 if "credits" in payload:
                     credits = (
@@ -326,10 +343,15 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         user_name = request.match_info["uname"]
+        org_name = request.match_info.get("oname")
         payload = await request.json()
 
         for index, user in enumerate(self.cluster_users):
-            if user.cluster_name == cluster_name and user.user_name == user_name:
+            if (
+                user.cluster_name == cluster_name
+                and user.user_name == user_name
+                and user.org_name == org_name
+            ):
                 balance = user.balance
                 spending = Decimal(payload["spending"])
                 balance = replace(
@@ -366,10 +388,12 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         user_name = request.match_info["uname"]
+        org_name = request.match_info.get("oname")
         for cluster_user in self.cluster_users:
             if (
                 cluster_user.cluster_name == cluster_name
                 and cluster_user.user_name == user_name
+                and cluster_user.org_name == org_name
             ):
                 return aiohttp.web.json_response(
                     self._serialize_cluster_user(
@@ -384,10 +408,12 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         user_name = request.match_info["uname"]
+        org_name = request.match_info.get("oname")
         for idx, cluster_user in enumerate(self.cluster_users):
             if (
                 cluster_user.cluster_name == cluster_name
                 and cluster_user.user_name == user_name
+                and cluster_user.org_name == org_name
             ):
                 del self.cluster_users[idx]
                 raise aiohttp.web.HTTPNoContent
@@ -804,6 +830,32 @@ async def mock_admin_server(
                     "/api/v1/clusters/{cname}/orgs/{oname}",
                     admin_server.handle_org_cluster_delete,
                 ),
+                # org user endpoints:
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}",
+                    admin_server.handle_cluster_user_get,
+                ),
+                aiohttp.web.put(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}",
+                    admin_server.handle_cluster_user_put,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}",
+                    admin_server.handle_cluster_user_delete,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/balance",
+                    admin_server.handle_cluster_user_patch_balance,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/quota",
+                    admin_server.handle_cluster_user_patch_quota,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/spending",
+                    admin_server.handle_cluster_user_add_spending,
+                ),
+                # patch org quota endpoints:
                 aiohttp.web.patch(
                     "/api/v1/clusters/{cname}/orgs/{oname}/balance",
                     admin_server.handle_org_cluster_patch_balance,
