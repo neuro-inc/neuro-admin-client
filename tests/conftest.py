@@ -527,18 +527,38 @@ class AdminServer:
         return aiohttp.web.json_response(resp)
 
     def _serialize_org_cluster(self, org_cluster: OrgCluster) -> Dict[str, Any]:
-        return {
+        res: Dict[str, Any] = {
             "org_name": org_cluster.org_name,
+            "quota": {},
+            "balance": {
+                "spent_credits": str(org_cluster.balance.spent_credits),
+            },
         }
+        if org_cluster.quota.total_running_jobs is not None:
+            res["quota"]["total_running_jobs"] = org_cluster.quota.total_running_jobs
+        if org_cluster.balance.credits is not None:
+            res["balance"]["credits"] = str(org_cluster.balance.credits)
+        return res
 
     async def handle_org_cluster_post(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         payload = await request.json()
+        credits_raw = payload.get("balance", {}).get("credits")
+        spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
         new_org_cluster = OrgCluster(
             cluster_name=cluster_name,
             org_name=payload["org_name"],
+            quota=Quota(
+                total_running_jobs=payload.get("quota", {}).get("total_running_jobs")
+            ),
+            balance=Balance(
+                credits=Decimal(credits_raw) if credits_raw else None,
+                spent_credits=Decimal(spend_credits_raw)
+                if spend_credits_raw
+                else Decimal(0),
+            ),
         )
         self.org_clusters.append(new_org_cluster)
         return aiohttp.web.json_response(
@@ -553,9 +573,20 @@ class AdminServer:
         cluster_name = request.match_info["cname"]
         org_name = request.match_info["oname"]
         payload = await request.json()
+        credits_raw = payload.get("balance", {}).get("credits")
+        spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
         new_org_cluster = OrgCluster(
             cluster_name=cluster_name,
             org_name=payload["org_name"],
+            quota=Quota(
+                total_running_jobs=payload.get("quota", {}).get("total_running_jobs")
+            ),
+            balance=Balance(
+                credits=Decimal(credits_raw) if credits_raw else None,
+                spent_credits=Decimal(spend_credits_raw)
+                if spend_credits_raw
+                else Decimal(0),
+            ),
         )
         assert new_org_cluster.org_name == org_name
         self.org_clusters = [
@@ -609,6 +640,72 @@ class AdminServer:
             if org_cluster.cluster_name == cluster_name
         ]
         return aiohttp.web.json_response(resp)
+
+    async def handle_org_cluster_patch_quota(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org_cluster in enumerate(self.org_clusters):
+            if (
+                org_cluster.cluster_name == cluster_name
+                and org_cluster.org_name == org_name
+            ):
+                quota = org_cluster.quota
+                if "quota" in payload:
+                    quota = replace(
+                        quota,
+                        total_running_jobs=payload["quota"].get("total_running_jobs"),
+                    )
+                if (
+                    "additional_quota" in payload
+                    and quota.total_running_jobs is not None
+                ):
+                    quota = replace(
+                        quota,
+                        total_running_jobs=quota.total_running_jobs
+                        + payload["additional_quota"].get("total_running_jobs"),
+                    )
+                org_cluster = replace(org_cluster, quota=quota)
+                self.org_clusters[index] = org_cluster
+                return aiohttp.web.json_response(
+                    self._serialize_org_cluster(org_cluster)
+                )
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_org_cluster_patch_balance(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org_cluster in enumerate(self.org_clusters):
+            if (
+                org_cluster.cluster_name == cluster_name
+                and org_cluster.org_name == org_name
+            ):
+                balance = org_cluster.balance
+                if "credits" in payload:
+                    credits = (
+                        Decimal(payload["credits"]) if payload["credits"] else None
+                    )
+                    balance = replace(balance, credits=credits)
+                if payload.get("additional_credits") and balance.credits is not None:
+                    additional_credits = Decimal(payload["additional_credits"])
+                    balance = replace(
+                        balance, credits=balance.credits + additional_credits
+                    )
+                org_cluster = replace(org_cluster, balance=balance)
+                self.org_clusters[index] = org_cluster
+                return aiohttp.web.json_response(
+                    self._serialize_org_cluster(
+                        org_cluster,
+                    )
+                )
+        raise aiohttp.web.HTTPNotFound
 
 
 @pytest.fixture
@@ -757,6 +854,14 @@ async def mock_admin_server(
                 aiohttp.web.post(
                     "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/spending",
                     admin_server.handle_cluster_user_add_spending,
+                # patch org quota endpoints:
+                aiohttp.web.patch(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/balance",
+                    admin_server.handle_org_cluster_patch_balance,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/quota",
+                    admin_server.handle_org_cluster_patch_quota,
                 ),
             )
         )
