@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
@@ -68,7 +68,9 @@ class OrgUser:
 
     def add_info(self, user_info: UserInfo) -> "OrgUserWithInfo":
         return OrgUserWithInfo(
-            **asdict(self),
+            user_name=self.user_name,
+            role=self.role,
+            org_name=self.org_name,
             user_info=user_info,
         )
 
@@ -121,7 +123,12 @@ class ClusterUser:
 
     def add_info(self, user_info: UserInfo) -> "ClusterUserWithInfo":
         return ClusterUserWithInfo(
-            **asdict(self),
+            cluster_name=self.cluster_name,
+            user_name=self.user_name,
+            role=self.role,
+            quota=self.quota,
+            balance=self.balance,
+            org_name=self.org_name,
             user_info=user_info,
         )
 
