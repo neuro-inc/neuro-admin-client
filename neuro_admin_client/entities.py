@@ -5,8 +5,22 @@ from enum import Enum, unique
 from typing import Optional
 
 
+class FullNameMixin:
+    first_name: Optional[str]
+    last_name: Optional[str]
+
+    def full_name(self) -> str:
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        if self.first_name:
+            return self.first_name
+        if self.last_name:
+            return self.last_name
+        return ""
+
+
 @dataclass(frozen=True)
-class UserInfo:
+class UserInfo(FullNameMixin):
     email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -14,7 +28,7 @@ class UserInfo:
 
 
 @dataclass(frozen=True)
-class User:
+class User(FullNameMixin):
     name: str
     email: str
     first_name: Optional[str] = None
