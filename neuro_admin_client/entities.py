@@ -9,6 +9,7 @@ class FullNameMixin:
     first_name: Optional[str]
     last_name: Optional[str]
 
+    @property
     def full_name(self) -> str:
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
