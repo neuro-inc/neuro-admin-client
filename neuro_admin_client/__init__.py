@@ -8,7 +8,6 @@ from typing import (
     AsyncIterator,
     Dict,
     List,
-    Literal,
     Mapping,
     Optional,
     Sequence,
@@ -19,6 +18,7 @@ from typing import (
 
 import aiohttp
 from multidict import CIMultiDict
+from typing_extensions import Literal
 from yarl import URL
 
 from neuro_admin_client.entities import (
