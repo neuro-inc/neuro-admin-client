@@ -174,6 +174,12 @@ class AdminClientBase:
             raw_cluster = await resp.json()
             return self._parse_cluster_payload(raw_cluster)
 
+    async def delete_cluster(self, name: str) -> Cluster:
+        async with self._request("DELETE", f"clusters/{name}") as resp:
+            resp.raise_for_status()
+            raw_cluster = await resp.json()
+            return self._parse_cluster_payload(raw_cluster)
+
     def _parse_quota(self, payload: Optional[Dict[str, Any]]) -> Quota:
         if payload is None:
             return Quota()
@@ -890,6 +896,12 @@ class AdminClientBase:
             "name": name,
         }
         async with self._request("POST", "orgs", json=payload) as resp:
+            resp.raise_for_status()
+            raw_org = await resp.json()
+            return self._parse_org_payload(raw_org)
+
+    async def delete_org(self, name: str) -> Org:
+        async with self._request("DELETE", f"orgs/{name}") as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
             return self._parse_org_payload(raw_org)

@@ -2,6 +2,9 @@ import datetime
 from dataclasses import replace
 from decimal import Decimal
 
+import pytest
+from aiohttp import ClientResponseError
+
 from neuro_admin_client import (
     AdminClient,
     Balance,
@@ -175,6 +178,28 @@ class TestAdminClient:
             org = await client.get_org(name="name2")
             assert org == mock_admin_server.orgs[1]
 
+    async def test_delete_org(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="name",
+            ),
+            Org(
+                name="name2",
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org = await client.delete_org(name="name")
+            assert org.name == "name"
+
+            with pytest.raises(ClientResponseError):
+                org = await client.get_org(name="name")
+
+            assert len(mock_admin_server.orgs) == 1
+
+            org = await client.get_org(name="name2")
+            assert org == mock_admin_server.orgs[0]
+
     async def test_create_cluster(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:
             await client.create_cluster(name="name")
@@ -215,6 +240,29 @@ class TestAdminClient:
 
             cluster = await client.get_cluster(name="name2")
             assert cluster == mock_admin_server.clusters[1]
+
+    async def test_delete_cluster(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.clusters = [
+            Cluster(
+                name="name",
+            ),
+            Cluster(
+                name="name2",
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+
+            cluster = await client.delete_cluster(name="name")
+            assert cluster.name == "name"
+
+            with pytest.raises(ClientResponseError):
+                cluster = await client.get_cluster(name="name")
+
+            assert len(mock_admin_server.clusters) == 1
+
+            cluster = await client.get_cluster(name="name2")
+            assert cluster == mock_admin_server.clusters[0]
 
     async def test_create_cluster_user(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:

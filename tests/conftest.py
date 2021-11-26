@@ -134,6 +134,16 @@ class AdminServer:
                 return aiohttp.web.json_response(self._serialize_org(org))
         raise aiohttp.web.HTTPNotFound
 
+    async def handle_org_delete(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        for idx, org in enumerate(self.orgs):
+            if org.name == org_name:
+                del self.orgs[idx]
+                return aiohttp.web.json_response(self._serialize_org(org))
+        raise aiohttp.web.HTTPNotFound
+
     async def handle_org_list(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
@@ -169,6 +179,16 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         resp = [self._serialize_cluster(cluster) for cluster in self.clusters]
         return aiohttp.web.json_response(resp)
+
+    async def handle_cluster_delete(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        for idx, cluster in enumerate(self.clusters):
+            if cluster.name == cluster_name:
+                del self.clusters[idx]
+                return aiohttp.web.json_response(self._serialize_cluster(cluster))
+        raise aiohttp.web.HTTPNotFound
 
     def _serialize_cluster_user(
         self, cluster_user: ClusterUser, with_info: bool
@@ -742,6 +762,10 @@ async def mock_admin_server(
                     "/api/v1/orgs/{oname}",
                     admin_server.handle_org_get,
                 ),
+                aiohttp.web.delete(
+                    "/api/v1/orgs/{oname}",
+                    admin_server.handle_org_delete,
+                ),
                 aiohttp.web.get(
                     "/api/v1/clusters",
                     admin_server.handle_cluster_list,
@@ -753,6 +777,10 @@ async def mock_admin_server(
                 aiohttp.web.get(
                     "/api/v1/clusters/{cname}",
                     admin_server.handle_cluster_get,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/clusters/{cname}",
+                    admin_server.handle_cluster_delete,
                 ),
                 aiohttp.web.post(
                     "/api/v1/clusters/{cname}/users",
