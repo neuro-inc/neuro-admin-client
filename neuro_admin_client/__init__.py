@@ -442,6 +442,9 @@ class AdminClientBase:
         params = {
             "with_user_info": _to_query_bool(with_user_info),
         }
+        if payload["quota"]["total_running_jobs"] is None:
+            # Server do not support None in payload
+            payload["quota"].pop("total_running_jobs")
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
         if org_name:
