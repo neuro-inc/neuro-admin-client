@@ -85,6 +85,10 @@ class Balance:
     credits: Optional[Decimal] = None
     spent_credits: Decimal = Decimal(0)
 
+    @property
+    def non_positive(self) -> bool:
+        return self.spent_credits is not None and self.spent_credits < 0
+
 
 @dataclass(frozen=True)
 class Quota:
