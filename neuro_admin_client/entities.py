@@ -87,7 +87,7 @@ class Balance:
 
     @property
     def is_non_positive(self) -> bool:
-        return self.spent_credits is not None and self.spent_credits < 0
+        return self.credits is not None and self.credits < 0
 
 
 @dataclass(frozen=True)
