@@ -86,7 +86,7 @@ class Balance:
     spent_credits: Decimal = Decimal(0)
 
     @property
-    def non_positive(self) -> bool:
+    def is_non_positive(self) -> bool:
         return self.spent_credits is not None and self.spent_credits < 0
 
 
