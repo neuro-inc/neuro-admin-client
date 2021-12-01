@@ -793,6 +793,9 @@ class AdminClientBase:
     ) -> OrgCluster:
         payload = {"quota": {"total_running_jobs": quota.total_running_jobs}}
         params = {}
+        if payload["quota"]["total_running_jobs"] is None:
+            # Server do not support None in payload
+            payload["quota"].pop("total_running_jobs")
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
         async with self._request(
