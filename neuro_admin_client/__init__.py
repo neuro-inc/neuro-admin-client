@@ -1,4 +1,5 @@
 import abc
+from abc import abstractmethod
 from contextlib import asynccontextmanager
 from datetime import datetime
 from decimal import Decimal
@@ -42,7 +43,571 @@ def _to_query_bool(flag: bool) -> str:
     return str(flag).lower()
 
 
-class AdminClientBase:
+class AdminClientABC(abc.ABC):
+    async def __aenter__(self) -> "AdminClientABC":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+    async def aclose(self) -> None:
+        pass
+
+    @abstractmethod
+    async def list_users(self) -> List[User]:
+        ...
+
+    @abstractmethod
+    async def get_user(self, name: str) -> User:
+        ...
+
+    @abstractmethod
+    async def get_user_with_clusters(self, name: str) -> Tuple[User, List[ClusterUser]]:
+        ...
+
+    @abstractmethod
+    async def create_user(
+        self,
+        name: str,
+        email: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+    ) -> User:
+        ...
+
+    @abstractmethod
+    async def update_user(
+        self,
+        user: User,
+    ) -> None:
+        ...
+
+    @abstractmethod
+    async def list_clusters(self) -> List[Cluster]:
+        ...
+
+    @abstractmethod
+    async def get_cluster(self, name: str) -> Cluster:
+        ...
+
+    @abstractmethod
+    async def create_cluster(
+        self,
+        name: str,
+    ) -> Cluster:
+        ...
+
+    @abstractmethod
+    async def delete_cluster(self, name: str) -> Cluster:
+        ...
+
+    @overload
+    async def list_cluster_users(
+        self, cluster_name: str, with_user_info: Literal[True]
+    ) -> List[ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def list_cluster_users(
+        self, cluster_name: str, with_user_info: Literal[False] = ...
+    ) -> List[ClusterUser]:
+        ...
+
+    @abstractmethod
+    async def list_cluster_users(
+        self, cluster_name: str, with_user_info: bool = False
+    ) -> Union[List[ClusterUser], List[ClusterUserWithInfo]]:
+        ...
+
+    @overload
+    async def get_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: Literal[True] = ...,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def get_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def get_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def create_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        role: ClusterUserRoleType,
+        quota: Quota,
+        balance: Balance,
+        with_user_info: Literal[True],
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def create_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        role: ClusterUserRoleType,
+        quota: Quota,
+        balance: Balance,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def create_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        role: ClusterUserRoleType,
+        quota: Quota,
+        balance: Balance,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def update_cluster_user(
+        self, cluster_user: ClusterUser, with_user_info: Literal[True]
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user(
+        self, cluster_user: ClusterUser, with_user_info: Literal[False] = ...
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def update_cluster_user(
+        self, cluster_user: ClusterUser, with_user_info: bool = False
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @abstractmethod
+    async def delete_cluster_user(
+        self, cluster_name: str, user_name: str, org_name: Optional[str] = None
+    ) -> None:
+        ...
+
+    @overload
+    async def update_cluster_user_quota(
+        self,
+        cluster_name: str,
+        user_name: str,
+        quota: Quota,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_quota(
+        self,
+        cluster_name: str,
+        user_name: str,
+        quota: Quota,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def update_cluster_user_quota(
+        self,
+        cluster_name: str,
+        user_name: str,
+        quota: Quota,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def update_cluster_user_quota_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Quota,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_quota_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Quota,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def update_cluster_user_quota_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Quota,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def update_cluster_user_balance(
+        self,
+        cluster_name: str,
+        user_name: str,
+        credits: Optional[Decimal],
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_balance(
+        self,
+        cluster_name: str,
+        user_name: str,
+        credits: Optional[Decimal],
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def update_cluster_user_balance(
+        self,
+        cluster_name: str,
+        user_name: str,
+        credits: Optional[Decimal],
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def update_cluster_user_balance_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_balance_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def update_cluster_user_balance_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def charge_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def charge_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    @abstractmethod
+    async def charge_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        ...
+
+    @abstractmethod
+    async def create_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+        quota: Quota = Quota(),
+        balance: Balance = Balance(),
+    ) -> OrgCluster:
+        ...
+
+    @abstractmethod
+    async def list_org_clusters(self, cluster_name: str) -> List[OrgCluster]:
+        ...
+
+    @abstractmethod
+    async def get_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+    ) -> OrgCluster:
+        ...
+
+    @abstractmethod
+    async def update_org_cluster(self, org_cluster: OrgCluster) -> OrgCluster:
+        ...
+
+    @abstractmethod
+    async def delete_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+    ) -> None:
+        ...
+
+    @abstractmethod
+    async def update_org_cluster_quota(
+        self,
+        cluster_name: str,
+        org_name: str,
+        quota: Quota,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        ...
+
+    @abstractmethod
+    async def update_org_cluster_quota_by_delta(
+        self,
+        cluster_name: str,
+        org_name: str,
+        delta: Quota,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        ...
+
+    @abstractmethod
+    async def update_org_cluster_balance(
+        self,
+        cluster_name: str,
+        org_name: str,
+        credits: Optional[Decimal],
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        ...
+
+    @abstractmethod
+    async def update_org_cluster_balance_by_delta(
+        self,
+        cluster_name: str,
+        org_name: str,
+        delta: Decimal,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        ...
+
+    @abstractmethod
+    async def list_orgs(self) -> List[Org]:
+        ...
+
+    @abstractmethod
+    async def get_org(self, name: str) -> Org:
+        ...
+
+    @abstractmethod
+    async def create_org(
+        self,
+        name: str,
+    ) -> Org:
+        ...
+
+    @abstractmethod
+    async def delete_org(self, name: str) -> Org:
+        ...
+
+    #  org user
+
+    @overload
+    async def list_org_users(
+        self, org_name: str, with_user_info: Literal[True]
+    ) -> List[OrgUserWithInfo]:
+        ...
+
+    @overload
+    async def list_org_users(
+        self, org_name: str, with_user_info: Literal[False] = ...
+    ) -> List[OrgUser]:
+        ...
+
+    @abstractmethod
+    async def list_org_users(
+        self, org_name: str, with_user_info: bool = False
+    ) -> Union[List[OrgUser], List[OrgUserWithInfo]]:
+        ...
+
+    @overload
+    async def get_org_user(
+        self, org_name: str, user_name: str, with_user_info: Literal[True]
+    ) -> OrgUserWithInfo:
+        ...
+
+    @overload
+    async def get_org_user(
+        self, org_name: str, user_name: str, with_user_info: Literal[False] = ...
+    ) -> OrgUser:
+        ...
+
+    @abstractmethod
+    async def get_org_user(
+        self, org_name: str, user_name: str, with_user_info: bool = False
+    ) -> Union[OrgUser, OrgUserWithInfo]:
+        ...
+
+    @overload
+    async def create_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        role: OrgUserRoleType,
+        with_user_info: Literal[True],
+    ) -> OrgUserWithInfo:
+        ...
+
+    @overload
+    async def create_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        role: OrgUserRoleType,
+        with_user_info: Literal[False] = ...,
+    ) -> OrgUser:
+        ...
+
+    @abstractmethod
+    async def create_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        role: OrgUserRoleType,
+        with_user_info: bool = False,
+    ) -> Union[OrgUser, OrgUserWithInfo]:
+        ...
+
+    @overload
+    async def update_org_user(
+        self, org_user: OrgUser, with_user_info: Literal[True]
+    ) -> OrgUserWithInfo:
+        ...
+
+    @overload
+    async def update_org_user(
+        self, org_user: OrgUser, with_user_info: Literal[False] = ...
+    ) -> OrgUser:
+        ...
+
+    @abstractmethod
+    async def update_org_user(
+        self, org_user: OrgUser, with_user_info: bool = False
+    ) -> Union[OrgUser, OrgUserWithInfo]:
+        ...
+
+    @abstractmethod
+    async def delete_org_user(self, org_name: str, user_name: str) -> None:
+        ...
+
+    # OLD API:
+
+    @abstractmethod
+    async def add_debt(
+        self,
+        cluster_name: str,
+        username: str,
+        credits: Decimal,
+        idempotency_key: str,
+    ) -> None:
+        ...
+
+
+class AdminClientBase(AdminClientABC):
     @abc.abstractmethod
     def _request(
         self,
@@ -1074,17 +1639,35 @@ class AdminClientBase:
             response.raise_for_status()
 
 
-class AdminClient(AdminClientBase):
+class AdminClient(AdminClientBase, AdminClientABC):
+    def __new__(
+        cls,
+        *,
+        base_url: Optional[URL],
+        service_token: Optional[str] = None,
+        conn_timeout_s: int = 300,
+        read_timeout_s: int = 100,
+        conn_pool_size: int = 100,
+        trace_configs: Sequence[aiohttp.TraceConfig] = (),
+    ) -> Any:
+        if base_url is None:
+            return AdminClientDummy()
+        return super().__new__(cls)
+
     def __init__(
         self,
         *,
-        base_url: URL,
+        base_url: Optional[URL],
         service_token: Optional[str] = None,
         conn_timeout_s: int = 300,
         read_timeout_s: int = 100,
         conn_pool_size: int = 100,
         trace_configs: Sequence[aiohttp.TraceConfig] = (),
     ):
+        if base_url is not None and not base_url:
+            raise ValueError(
+                "url argument should be http URL or None for secure-less configurations"
+            )
         self._base_url = base_url
         self._service_token = service_token
         self._conn_timeout_s = conn_timeout_s
@@ -1138,3 +1721,557 @@ class AdminClient(AdminClientBase):
         async with self._client.request(method, url, **kwargs) as response:
             response.raise_for_status()
             yield response
+
+
+class AdminClientDummy(AdminClientABC):
+    DUMMY_USER = User(
+        name="user",
+        email="email@example.com",
+    )
+    DUMMY_CLUSTER = Cluster(name="default")
+    DUMMY_CLUSTER_USER = ClusterUserWithInfo(
+        cluster_name="default",
+        user_name="user",
+        role=ClusterUserRoleType.ADMIN,
+        quota=Quota(),
+        balance=Balance(),
+        org_name=None,
+        user_info=UserInfo(email="email@examle.com"),
+    )
+    DUMMY_ORG = Org(
+        name="org",
+    )
+    DUMMY_ORG_CLUSTER = OrgCluster(
+        org_name="org",
+        cluster_name="default",
+        balance=Balance(),
+        quota=Quota(),
+    )
+    DUMMY_ORG_USER = OrgUserWithInfo(
+        org_name="org",
+        user_name="user",
+        role=OrgUserRoleType.ADMIN,
+        user_info=UserInfo(email="email@examle.com"),
+    )
+
+    async def __aenter__(self) -> "AdminClientDummy":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+    async def aclose(self) -> None:
+        pass
+
+    async def list_users(self) -> List[User]:
+        return [self.DUMMY_USER]
+
+    async def get_user(self, name: str) -> User:
+        return self.DUMMY_USER
+
+    async def get_user_with_clusters(self, name: str) -> Tuple[User, List[ClusterUser]]:
+        return self.DUMMY_USER, [self.DUMMY_CLUSTER_USER]
+
+    async def create_user(
+        self,
+        name: str,
+        email: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+    ) -> User:
+        return self.DUMMY_USER
+
+    async def update_user(
+        self,
+        user: User,
+    ) -> None:
+        pass
+
+    async def list_clusters(self) -> List[Cluster]:
+        return [self.DUMMY_CLUSTER]
+
+    async def get_cluster(self, name: str) -> Cluster:
+        return self.DUMMY_CLUSTER
+
+    async def create_cluster(
+        self,
+        name: str,
+    ) -> Cluster:
+        return self.DUMMY_CLUSTER
+
+    async def delete_cluster(self, name: str) -> Cluster:
+        pass
+
+    @overload
+    async def list_cluster_users(
+        self, cluster_name: str, with_user_info: Literal[True]
+    ) -> List[ClusterUserWithInfo]:
+        ...
+
+    @overload
+    async def list_cluster_users(
+        self, cluster_name: str, with_user_info: Literal[False] = ...
+    ) -> List[ClusterUser]:
+        ...
+
+    async def list_cluster_users(
+        self, cluster_name: str, with_user_info: bool = False
+    ) -> Union[List[ClusterUser], List[ClusterUserWithInfo]]:
+        return [self.DUMMY_CLUSTER_USER]
+
+    @overload
+    async def get_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: Literal[True] = ...,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def get_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    async def get_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    @overload
+    async def create_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        role: ClusterUserRoleType,
+        quota: Quota,
+        balance: Balance,
+        with_user_info: Literal[True],
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def create_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        role: ClusterUserRoleType,
+        quota: Quota,
+        balance: Balance,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    async def create_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        role: ClusterUserRoleType,
+        quota: Quota,
+        balance: Balance,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    @overload
+    async def update_cluster_user(
+        self, cluster_user: ClusterUser, with_user_info: Literal[True]
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user(
+        self, cluster_user: ClusterUser, with_user_info: Literal[False] = ...
+    ) -> ClusterUser:
+        ...
+
+    async def update_cluster_user(
+        self, cluster_user: ClusterUser, with_user_info: bool = False
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    async def delete_cluster_user(
+        self, cluster_name: str, user_name: str, org_name: Optional[str] = None
+    ) -> None:
+        pass
+
+    @overload
+    async def update_cluster_user_quota(
+        self,
+        cluster_name: str,
+        user_name: str,
+        quota: Quota,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_quota(
+        self,
+        cluster_name: str,
+        user_name: str,
+        quota: Quota,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    async def update_cluster_user_quota(
+        self,
+        cluster_name: str,
+        user_name: str,
+        quota: Quota,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    @overload
+    async def update_cluster_user_quota_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Quota,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_quota_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Quota,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    async def update_cluster_user_quota_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Quota,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    @overload
+    async def update_cluster_user_balance(
+        self,
+        cluster_name: str,
+        user_name: str,
+        credits: Optional[Decimal],
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_balance(
+        self,
+        cluster_name: str,
+        user_name: str,
+        credits: Optional[Decimal],
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    async def update_cluster_user_balance(
+        self,
+        cluster_name: str,
+        user_name: str,
+        credits: Optional[Decimal],
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    @overload
+    async def update_cluster_user_balance_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def update_cluster_user_balance_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    async def update_cluster_user_balance_by_delta(
+        self,
+        cluster_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    @overload
+    async def charge_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUserWithInfo:
+        ...
+
+    @overload
+    async def charge_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> ClusterUser:
+        ...
+
+    async def charge_cluster_user(
+        self,
+        cluster_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: Optional[str] = None,
+        org_name: Optional[str] = None,
+    ) -> Union[ClusterUser, ClusterUserWithInfo]:
+        return self.DUMMY_CLUSTER_USER
+
+    async def create_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+        quota: Quota = Quota(),
+        balance: Balance = Balance(),
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
+    async def list_org_clusters(self, cluster_name: str) -> List[OrgCluster]:
+        return [self.DUMMY_ORG_CLUSTER]
+
+    async def get_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
+    async def update_org_cluster(self, org_cluster: OrgCluster) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
+    async def delete_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+    ) -> None:
+        pass
+
+    async def update_org_cluster_quota(
+        self,
+        cluster_name: str,
+        org_name: str,
+        quota: Quota,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
+    async def update_org_cluster_quota_by_delta(
+        self,
+        cluster_name: str,
+        org_name: str,
+        delta: Quota,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
+    async def update_org_cluster_balance(
+        self,
+        cluster_name: str,
+        org_name: str,
+        credits: Optional[Decimal],
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
+    async def update_org_cluster_balance_by_delta(
+        self,
+        cluster_name: str,
+        org_name: str,
+        delta: Decimal,
+        *,
+        idempotency_key: Optional[str] = None,
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
+    async def list_orgs(self) -> List[Org]:
+        return [self.DUMMY_ORG]
+
+    async def get_org(self, name: str) -> Org:
+        return self.DUMMY_ORG
+
+    async def create_org(
+        self,
+        name: str,
+    ) -> Org:
+        return self.DUMMY_ORG
+
+    async def delete_org(self, name: str) -> Org:
+        pass
+
+    #  org user
+
+    @overload
+    async def list_org_users(
+        self, org_name: str, with_user_info: Literal[True]
+    ) -> List[OrgUserWithInfo]:
+        ...
+
+    @overload
+    async def list_org_users(
+        self, org_name: str, with_user_info: Literal[False] = ...
+    ) -> List[OrgUser]:
+        ...
+
+    async def list_org_users(
+        self, org_name: str, with_user_info: bool = False
+    ) -> Union[List[OrgUser], List[OrgUserWithInfo]]:
+        return [self.DUMMY_ORG_USER]
+
+    @overload
+    async def get_org_user(
+        self, org_name: str, user_name: str, with_user_info: Literal[True]
+    ) -> OrgUserWithInfo:
+        ...
+
+    @overload
+    async def get_org_user(
+        self, org_name: str, user_name: str, with_user_info: Literal[False] = ...
+    ) -> OrgUser:
+        ...
+
+    async def get_org_user(
+        self, org_name: str, user_name: str, with_user_info: bool = False
+    ) -> Union[OrgUser, OrgUserWithInfo]:
+        return self.DUMMY_ORG_USER
+
+    @overload
+    async def create_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        role: OrgUserRoleType,
+        with_user_info: Literal[True],
+    ) -> OrgUserWithInfo:
+        ...
+
+    @overload
+    async def create_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        role: OrgUserRoleType,
+        with_user_info: Literal[False] = ...,
+    ) -> OrgUser:
+        ...
+
+    async def create_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        role: OrgUserRoleType,
+        with_user_info: bool = False,
+    ) -> Union[OrgUser, OrgUserWithInfo]:
+        return self.DUMMY_ORG_USER
+
+    @overload
+    async def update_org_user(
+        self, org_user: OrgUser, with_user_info: Literal[True]
+    ) -> OrgUserWithInfo:
+        ...
+
+    @overload
+    async def update_org_user(
+        self, org_user: OrgUser, with_user_info: Literal[False] = ...
+    ) -> OrgUser:
+        ...
+
+    async def update_org_user(
+        self, org_user: OrgUser, with_user_info: bool = False
+    ) -> Union[OrgUser, OrgUserWithInfo]:
+        return self.DUMMY_ORG_USER
+
+    async def delete_org_user(self, org_name: str, user_name: str) -> None:
+        pass
+
+    async def add_debt(
+        self,
+        cluster_name: str,
+        username: str,
+        credits: Decimal,
+        idempotency_key: str,
+    ) -> None:
+        pass

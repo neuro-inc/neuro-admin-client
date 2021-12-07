@@ -23,6 +23,13 @@ from .conftest import AdminServer
 
 
 class TestAdminClient:
+    async def test_client_no_url_no_errors(self) -> None:
+        async with AdminClient(base_url=None) as client:
+            await client.get_user("name")
+            await client.get_org("org")
+            await client.get_cluster("cluster")
+            await client.get_cluster_user("cluster", "name")
+
     async def test_create_user(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:
             await client.create_user(name="name", email="email")
