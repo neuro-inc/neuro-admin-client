@@ -616,7 +616,7 @@ class AdminClientABC(abc.ABC):
         ...
 
 
-class AdminClientBase(AdminClientABC):
+class AdminClientBase:
     @abc.abstractmethod
     def _request(
         self,
