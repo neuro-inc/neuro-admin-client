@@ -405,6 +405,49 @@ class TestAdminClient:
         assert len(cluster_users) == 2
         assert set(cluster_users) == set(mock_admin_server.cluster_users)
 
+    async def test_list_clusters_user_with_org(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.users = [
+            User(
+                name="test1",
+                email="email",
+            ),
+            User(
+                name="test2",
+                email="email",
+            ),
+        ]
+        mock_admin_server.clusters = [
+            Cluster(
+                name="cluster",
+            ),
+        ]
+        mock_admin_server.cluster_users = [
+            ClusterUser(
+                user_name="test1",
+                cluster_name="cluster",
+                org_name=None,
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.USER,
+            ),
+            ClusterUser(
+                user_name="test2",
+                cluster_name="cluster",
+                org_name="org1",
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.ADMIN,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            cluster_users = await client.list_cluster_users("cluster", org_name="org1")
+
+        assert len(cluster_users) == 1
+        assert set(cluster_users) == {mock_admin_server.cluster_users[1]}
+
     async def test_get_cluster_user(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.users = [
             User(

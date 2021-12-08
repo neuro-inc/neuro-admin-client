@@ -103,19 +103,28 @@ class AdminClientABC(abc.ABC):
 
     @overload
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: Literal[True]
+        self,
+        cluster_name: str,
+        with_user_info: Literal[True],
+        org_name: Optional[str] = None,
     ) -> List[ClusterUserWithInfo]:
         ...
 
     @overload
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: Literal[False] = ...
+        self,
+        cluster_name: str,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
     ) -> List[ClusterUser]:
         ...
 
     @abstractmethod
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: bool = False
+        self,
+        cluster_name: str,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
     ) -> Union[List[ClusterUser], List[ClusterUserWithInfo]]:
         ...
 
@@ -776,22 +785,35 @@ class AdminClientBase(AdminClientABC):
 
     @overload
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: Literal[True]
+        self,
+        cluster_name: str,
+        with_user_info: Literal[True],
+        org_name: Optional[str] = None,
     ) -> List[ClusterUserWithInfo]:
         ...
 
     @overload
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: Literal[False] = ...
+        self,
+        cluster_name: str,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
     ) -> List[ClusterUser]:
         ...
 
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: bool = False
+        self,
+        cluster_name: str,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
     ) -> Union[List[ClusterUser], List[ClusterUserWithInfo]]:
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/users"
+        else:
+            url = f"clusters/{cluster_name}/users"
         async with self._request(
             "GET",
-            f"clusters/{cluster_name}/users",
+            url,
             params={"with_user_info": _to_query_bool(with_user_info)},
         ) as resp:
             resp.raise_for_status()
@@ -1804,18 +1826,27 @@ class AdminClientDummy(AdminClientABC):
 
     @overload
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: Literal[True]
+        self,
+        cluster_name: str,
+        with_user_info: Literal[True],
+        org_name: Optional[str] = None,
     ) -> List[ClusterUserWithInfo]:
         ...
 
     @overload
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: Literal[False] = ...
+        self,
+        cluster_name: str,
+        with_user_info: Literal[False] = ...,
+        org_name: Optional[str] = None,
     ) -> List[ClusterUser]:
         ...
 
     async def list_cluster_users(
-        self, cluster_name: str, with_user_info: bool = False
+        self,
+        cluster_name: str,
+        with_user_info: bool = False,
+        org_name: Optional[str] = None,
     ) -> Union[List[ClusterUser], List[ClusterUserWithInfo]]:
         return [self.DUMMY_CLUSTER_USER]
 

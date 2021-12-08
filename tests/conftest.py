@@ -443,12 +443,14 @@ class AdminServer:
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
         resp = [
             self._serialize_cluster_user(
                 cluster_user, _parse_bool(request.query.get("with_user_info", "false"))
             )
             for cluster_user in self.cluster_users
             if cluster_user.cluster_name == cluster_name
+            and (org_name is None or cluster_user.org_name == org_name)
         ]
         return aiohttp.web.json_response(resp)
 
@@ -859,6 +861,10 @@ async def mock_admin_server(
                     admin_server.handle_org_cluster_delete,
                 ),
                 # org user endpoints:
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/users",
+                    admin_server.handle_cluster_user_list,
+                ),
                 aiohttp.web.get(
                     "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}",
                     admin_server.handle_cluster_user_get,
