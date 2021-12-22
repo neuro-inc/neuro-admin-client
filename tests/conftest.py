@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 import datetime
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 import aiohttp.web
@@ -44,22 +47,22 @@ def _parse_bool(value: str) -> bool:
 
 @dataclass()
 class AdminServer:
-    address: Optional[ApiAddress] = None
+    address: ApiAddress | None = None
 
-    users: List[User] = field(default_factory=list)
-    clusters: List[Cluster] = field(default_factory=list)
-    orgs: List[Org] = field(default_factory=list)
-    cluster_users: List[ClusterUser] = field(default_factory=list)
-    org_clusters: List[OrgCluster] = field(default_factory=list)
-    org_users: List[OrgUser] = field(default_factory=list)
-    debts: List[Debt] = field(default_factory=list)
+    users: list[User] = field(default_factory=list)
+    clusters: list[Cluster] = field(default_factory=list)
+    orgs: list[Org] = field(default_factory=list)
+    cluster_users: list[ClusterUser] = field(default_factory=list)
+    org_clusters: list[OrgCluster] = field(default_factory=list)
+    org_users: list[OrgUser] = field(default_factory=list)
+    debts: list[Debt] = field(default_factory=list)
 
     @property
     def url(self) -> URL:
         assert self.address
         return URL(f"http://{self.address.host}:{self.address.port}/api/v1/")
 
-    def _serialize_user(self, user: User) -> Dict[str, Any]:
+    def _serialize_user(self, user: User) -> dict[str, Any]:
         return {
             "name": user.name,
             "email": user.email,
@@ -68,7 +71,7 @@ class AdminServer:
             "created_at": user.created_at.isoformat() if user.created_at else None,
         }
 
-    def _serialize_user_cluster(self, user: ClusterUser) -> Dict[str, Any]:
+    def _serialize_user_cluster(self, user: ClusterUser) -> dict[str, Any]:
         res = self._serialize_cluster_user(user, False)
         res.pop("user_name")
         res["cluster_name"] = user.cluster_name
@@ -110,7 +113,7 @@ class AdminServer:
         resp = [self._serialize_user(user) for user in self.users]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_org(self, org: Org) -> Dict[str, Any]:
+    def _serialize_org(self, org: Org) -> dict[str, Any]:
         return {
             "name": org.name,
         }
@@ -150,7 +153,7 @@ class AdminServer:
         resp = [self._serialize_org(org) for org in self.orgs]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_cluster(self, cluster: Cluster) -> Dict[str, Any]:
+    def _serialize_cluster(self, cluster: Cluster) -> dict[str, Any]:
         return {
             "name": cluster.name,
         }
@@ -192,8 +195,8 @@ class AdminServer:
 
     def _serialize_cluster_user(
         self, cluster_user: ClusterUser, with_info: bool
-    ) -> Dict[str, Any]:
-        res: Dict[str, Any] = {
+    ) -> dict[str, Any]:
+        res: dict[str, Any] = {
             "user_name": cluster_user.user_name,
             "role": cluster_user.role.value,
             "org_name": cluster_user.org_name,
@@ -454,8 +457,8 @@ class AdminServer:
         ]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_org_user(self, org_user: OrgUser, with_info: bool) -> Dict[str, Any]:
-        res: Dict[str, Any] = {
+    def _serialize_org_user(self, org_user: OrgUser, with_info: bool) -> dict[str, Any]:
+        res: dict[str, Any] = {
             "user_name": org_user.user_name,
             "role": org_user.role.value,
             "org_name": org_user.org_name,
@@ -548,8 +551,8 @@ class AdminServer:
         ]
         return aiohttp.web.json_response(resp)
 
-    def _serialize_org_cluster(self, org_cluster: OrgCluster) -> Dict[str, Any]:
-        res: Dict[str, Any] = {
+    def _serialize_org_cluster(self, org_cluster: OrgCluster) -> dict[str, Any]:
+        res: dict[str, Any] = {
             "org_name": org_cluster.org_name,
             "quota": {},
             "balance": {
@@ -940,7 +943,7 @@ class ApiRunner:
 
         self._api_address_future: asyncio.Future[ApiAddress] = asyncio.Future()
         self._cleanup_future: asyncio.Future[None] = asyncio.Future()
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
 
     async def _run(self) -> None:
         async with create_local_app_server(self._app, port=self._port) as api_address:
