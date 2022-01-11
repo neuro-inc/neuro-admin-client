@@ -897,6 +897,20 @@ class AdminClientBase:
             raw_user = await resp.json()
             return self._parse_cluster_user(cluster_name, raw_user)
 
+    def _quota_to_payload(self, quota: Quota) -> dict[str, Any]:
+        res = {}
+        if quota.total_running_jobs is not None:
+            res["total_running_jobs"] = quota.total_running_jobs
+        return res
+
+    def _balance_to_payload(self, balance: Balance) -> dict[str, Any]:
+        res = {}
+        if balance.credits is not None:
+            res["credits"] = str(balance.credits)
+        if balance.spent_credits is not None:
+            res["spent_credits"] = str(balance.spent_credits)
+        return res
+
     @overload
     async def create_cluster_user(
         self,
@@ -933,20 +947,15 @@ class AdminClientBase:
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
-        payload: dict[str, Any] = {
-            "user_name": user_name,
-            "role": role.value,
-            "quota": {},
-            "balance": {},
-        }
+        payload: dict[str, Any] = {"user_name": user_name, "role": role.value}
         if org_name:
             payload["org_name"] = org_name
-        if quota.total_running_jobs is not None:
-            payload["quota"]["total_running_jobs"] = quota.total_running_jobs
-        if balance.credits is not None:
-            payload["balance"]["credits"] = str(balance.credits)
-        if balance.spent_credits is not None:
-            payload["balance"]["spent_credits"] = str(balance.spent_credits)
+        quota_payload = self._quota_to_payload(quota)
+        if quota_payload:
+            payload["quota"] = quota_payload
+        balance_payload = self._balance_to_payload(balance)
+        if quota_payload:
+            payload["balance"] = balance_payload
 
         async with self._request(
             "POST",
