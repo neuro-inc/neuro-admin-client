@@ -38,8 +38,25 @@ class User(FullNameMixin):
 
 
 @dataclass(frozen=True)
+class Balance:
+    credits: Optional[Decimal] = None
+    spent_credits: Decimal = Decimal(0)
+
+    @property
+    def is_non_positive(self) -> bool:
+        return self.credits is not None and self.credits <= 0
+
+
+@dataclass(frozen=True)
+class Quota:
+    total_running_jobs: Optional[int] = None
+
+
+@dataclass(frozen=True)
 class Cluster:
     name: str
+    default_credits: Optional[Decimal]
+    default_quota: Quota
 
 
 @dataclass(frozen=True)
@@ -81,26 +98,13 @@ class OrgUserWithInfo(OrgUser):
 
 
 @dataclass(frozen=True)
-class Balance:
-    credits: Optional[Decimal] = None
-    spent_credits: Decimal = Decimal(0)
-
-    @property
-    def is_non_positive(self) -> bool:
-        return self.credits is not None and self.credits <= 0
-
-
-@dataclass(frozen=True)
-class Quota:
-    total_running_jobs: Optional[int] = None
-
-
-@dataclass(frozen=True)
 class OrgCluster:
     org_name: str
     cluster_name: str
     balance: Balance
     quota: Quota
+    default_credits: Optional[Decimal] = None
+    default_quota: Quota = Quota()
 
 
 @unique

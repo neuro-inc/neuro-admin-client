@@ -85,7 +85,16 @@ class AdminClientABC(abc.ABC):
     async def create_cluster(
         self,
         name: str,
+        default_credits: Decimal | None = None,
+        default_quota: Quota = Quota(),
     ) -> Cluster:
+        ...
+
+    @abstractmethod
+    async def update_cluster(
+        self,
+        cluster: Cluster,
+    ) -> None:
         ...
 
     @abstractmethod
@@ -414,6 +423,8 @@ class AdminClientABC(abc.ABC):
         org_name: str,
         quota: Quota = Quota(),
         balance: Balance = Balance(),
+        default_quota: Quota = Quota(),
+        default_credits: Decimal | None = None,
     ) -> OrgCluster:
         ...
 
@@ -710,6 +721,10 @@ class AdminClientBase:
     def _parse_cluster_payload(self, payload: dict[str, Any]) -> Cluster:
         return Cluster(
             name=payload["name"],
+            default_credits=Decimal(payload["default_credits"])
+            if payload.get("default_credits")
+            else None,
+            default_quota=self._parse_quota(payload.get("default_quota")),
         )
 
     async def list_clusters(self) -> list[Cluster]:
@@ -730,14 +745,41 @@ class AdminClientBase:
     async def create_cluster(
         self,
         name: str,
+        default_credits: Decimal | None = None,
+        default_quota: Quota = Quota(),
     ) -> Cluster:
-        payload = {
+        payload: dict[str, Any] = {
             "name": name,
+            "default_quota": {},
         }
+        if default_credits:
+            payload["default_credits"] = str(default_credits)
+        if default_quota.total_running_jobs:
+            payload["default_quota"]["total_running_jobs"] = str(
+                default_quota.total_running_jobs
+            )
         async with self._request("POST", "clusters", json=payload) as resp:
             resp.raise_for_status()
             raw_cluster = await resp.json()
             return self._parse_cluster_payload(raw_cluster)
+
+    async def update_cluster(
+        self,
+        cluster: Cluster,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "name": cluster.name,
+        }
+        if cluster.default_credits:
+            payload["default_credits"] = str(cluster.default_credits)
+        if cluster.default_quota.total_running_jobs:
+            payload["default_quota"] = {
+                "total_running_jobs": str(cluster.default_quota.total_running_jobs)
+            }
+        async with self._request(
+            "PUT", f"clusters/{cluster.name}", json=payload
+        ) as resp:
+            resp.raise_for_status()
 
     async def delete_cluster(self, name: str) -> Cluster:
         async with self._request("DELETE", f"clusters/{name}") as resp:
@@ -1273,6 +1315,10 @@ class AdminClientBase:
             org_name=payload["org_name"],
             balance=self._parse_balance(payload.get("balance")),
             quota=self._parse_quota(payload.get("quota")),
+            default_credits=Decimal(payload["default_credits"])
+            if payload.get("default_credits")
+            else None,
+            default_quota=self._parse_quota(payload.get("default_quota")),
         )
 
     async def create_org_cluster(
@@ -1281,11 +1327,14 @@ class AdminClientBase:
         org_name: str,
         quota: Quota = Quota(),
         balance: Balance = Balance(),
+        default_quota: Quota = Quota(),
+        default_credits: Decimal | None = None,
     ) -> OrgCluster:
         payload: dict[str, Any] = {
             "org_name": org_name,
             "quota": {},
             "balance": {},
+            "default_quota": {},
         }
         if quota.total_running_jobs is not None:
             payload["quota"]["total_running_jobs"] = quota.total_running_jobs
@@ -1293,6 +1342,12 @@ class AdminClientBase:
             payload["balance"]["credits"] = str(balance.credits)
         if balance.spent_credits is not None:
             payload["balance"]["spent_credits"] = str(balance.spent_credits)
+        if default_credits:
+            payload["default_credits"] = str(default_credits)
+        if default_quota.total_running_jobs is not None:
+            payload["default_quota"][
+                "total_running_jobs"
+            ] = default_quota.total_running_jobs
         async with self._request(
             "POST",
             f"clusters/{cluster_name}/orgs",
@@ -1332,6 +1387,7 @@ class AdminClientBase:
             "org_name": org_cluster.org_name,
             "quota": {},
             "balance": {},
+            "default_quota": {},
         }
         if org_cluster.quota.total_running_jobs is not None:
             payload["quota"][
@@ -1341,6 +1397,12 @@ class AdminClientBase:
             payload["balance"]["credits"] = str(org_cluster.balance.credits)
         if org_cluster.balance.spent_credits is not None:
             payload["balance"]["spent_credits"] = str(org_cluster.balance.spent_credits)
+        if org_cluster.default_credits:
+            payload["default_credits"] = str(org_cluster.default_credits)
+        if org_cluster.default_quota.total_running_jobs is not None:
+            payload["default_quota"][
+                "total_running_jobs"
+            ] = org_cluster.default_quota.total_running_jobs
         async with self._request(
             "PUT",
             f"clusters/{org_cluster.cluster_name}/orgs/{org_cluster.org_name}",
@@ -1741,7 +1803,7 @@ class AdminClientDummy(AdminClientABC):
         name="user",
         email="email@example.com",
     )
-    DUMMY_CLUSTER = Cluster(name="default")
+    DUMMY_CLUSTER = Cluster(name="default", default_credits=None, default_quota=Quota())
     DUMMY_CLUSTER_USER = ClusterUserWithInfo(
         cluster_name="default",
         user_name="user",
@@ -1809,8 +1871,16 @@ class AdminClientDummy(AdminClientABC):
     async def create_cluster(
         self,
         name: str,
+        default_credits: Decimal | None = None,
+        default_quota: Quota = Quota(),
     ) -> Cluster:
         return self.DUMMY_CLUSTER
+
+    async def update_cluster(
+        self,
+        cluster: Cluster,
+    ) -> None:
+        pass
 
     async def delete_cluster(self, name: str) -> Cluster:
         pass
@@ -2126,6 +2196,8 @@ class AdminClientDummy(AdminClientABC):
         org_name: str,
         quota: Quota = Quota(),
         balance: Balance = Balance(),
+        default_quota: Quota = Quota(),
+        default_credits: Decimal | None = None,
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
 

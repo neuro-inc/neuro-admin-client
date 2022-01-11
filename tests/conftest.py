@@ -154,19 +154,69 @@ class AdminServer:
         return aiohttp.web.json_response(resp)
 
     def _serialize_cluster(self, cluster: Cluster) -> dict[str, Any]:
-        return {
+        resp: dict[str, Any] = {
             "name": cluster.name,
+            "default_quota": {},
         }
+        if cluster.default_credits:
+            resp["default_credits"] = str(cluster.default_credits)
+        if cluster.default_quota.total_running_jobs:
+            resp["default_quota"][
+                "total_running_jobs"
+            ] = cluster.default_quota.total_running_jobs
+        return resp
+
+    def _int_or_none(self, value: str | None) -> int | None:
+        if value:
+            return int(value)
+        return None
 
     async def handle_cluster_post(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
         payload = await request.json()
+        default_credits_raw = payload.get("default_credits")
+        default_quota_raw = payload.get("default_quota", {})
         new_cluster = Cluster(
             name=payload["name"],
+            default_credits=Decimal(default_credits_raw)
+            if default_credits_raw
+            else None,
+            default_quota=Quota(
+                total_running_jobs=self._int_or_none(
+                    default_quota_raw.get("total_running_jobs")
+                )
+            ),
         )
         self.clusters.append(new_cluster)
         return aiohttp.web.json_response(self._serialize_cluster(new_cluster))
+
+    async def handle_cluster_put(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        payload = await request.json()
+
+        assert cluster_name == payload["name"]
+
+        default_credits_raw = payload.get("default_credits")
+        default_quota_raw = payload.get("default_quota", {})
+        changed_cluster = Cluster(
+            name=payload["name"],
+            default_credits=Decimal(default_credits_raw)
+            if default_credits_raw
+            else None,
+            default_quota=Quota(
+                total_running_jobs=self._int_or_none(
+                    default_quota_raw.get("total_running_jobs")
+                )
+            ),
+        )
+        self.clusters = [
+            cluster for cluster in self.clusters if cluster.name != changed_cluster.name
+        ]
+        self.clusters.append(changed_cluster)
+        return aiohttp.web.json_response(self._serialize_cluster(changed_cluster))
 
     async def handle_cluster_get(
         self, request: aiohttp.web.Request
@@ -558,11 +608,18 @@ class AdminServer:
             "balance": {
                 "spent_credits": str(org_cluster.balance.spent_credits),
             },
+            "default_quota": {},
         }
         if org_cluster.quota.total_running_jobs is not None:
             res["quota"]["total_running_jobs"] = org_cluster.quota.total_running_jobs
         if org_cluster.balance.credits is not None:
             res["balance"]["credits"] = str(org_cluster.balance.credits)
+        if org_cluster.default_credits:
+            res["default_credits"] = str(org_cluster.default_credits)
+        if org_cluster.default_quota.total_running_jobs:
+            res["default_quota"][
+                "total_running_jobs"
+            ] = org_cluster.default_quota.total_running_jobs
         return res
 
     async def handle_org_cluster_post(
@@ -571,6 +628,7 @@ class AdminServer:
         cluster_name = request.match_info["cname"]
         payload = await request.json()
         credits_raw = payload.get("balance", {}).get("credits")
+        default_credits_raw = payload.get("default_credits")
         spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
         new_org_cluster = OrgCluster(
             cluster_name=cluster_name,
@@ -584,6 +642,14 @@ class AdminServer:
                 if spend_credits_raw
                 else Decimal(0),
             ),
+            default_quota=Quota(
+                total_running_jobs=payload.get("default_quota", {}).get(
+                    "total_running_jobs"
+                )
+            ),
+            default_credits=Decimal(default_credits_raw)
+            if default_credits_raw
+            else None,
         )
         self.org_clusters.append(new_org_cluster)
         return aiohttp.web.json_response(
@@ -599,6 +665,7 @@ class AdminServer:
         org_name = request.match_info["oname"]
         payload = await request.json()
         credits_raw = payload.get("balance", {}).get("credits")
+        default_credits_raw = payload.get("default_credits")
         spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
         new_org_cluster = OrgCluster(
             cluster_name=cluster_name,
@@ -612,6 +679,14 @@ class AdminServer:
                 if spend_credits_raw
                 else Decimal(0),
             ),
+            default_quota=Quota(
+                total_running_jobs=payload.get("default_quota", {}).get(
+                    "total_running_jobs"
+                )
+            ),
+            default_credits=Decimal(default_credits_raw)
+            if default_credits_raw
+            else None,
         )
         assert new_org_cluster.org_name == org_name
         self.org_clusters = [
@@ -782,6 +857,10 @@ async def mock_admin_server(
                 aiohttp.web.get(
                     "/api/v1/clusters/{cname}",
                     admin_server.handle_cluster_get,
+                ),
+                aiohttp.web.put(
+                    "/api/v1/clusters/{cname}",
+                    admin_server.handle_cluster_put,
                 ),
                 aiohttp.web.delete(
                     "/api/v1/clusters/{cname}",

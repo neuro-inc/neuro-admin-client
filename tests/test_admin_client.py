@@ -115,9 +115,13 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster1",
+                default_credits=None,
+                default_quota=Quota(),
             ),
             Cluster(
                 name="cluster2",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -215,13 +219,48 @@ class TestAdminClient:
         created_cluster = mock_admin_server.clusters[0]
         assert created_cluster.name == "name"
 
+    async def test_create_cluster_with_defaults(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_cluster(
+                name="name",
+                default_credits=Decimal(20),
+                default_quota=Quota(total_running_jobs=42),
+            )
+
+        assert len(mock_admin_server.clusters) == 1
+        created_cluster = mock_admin_server.clusters[0]
+        assert created_cluster.name == "name"
+        assert created_cluster.default_credits == Decimal(20)
+        assert created_cluster.default_quota == Quota(total_running_jobs=42)
+
+    async def test_update_cluster(self, mock_admin_server: AdminServer) -> None:
+        cluster = Cluster(
+            name="name",
+            default_credits=Decimal(20),
+            default_quota=Quota(total_running_jobs=42),
+        )
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_cluster(name=cluster.name)
+            await client.update_cluster(cluster)
+
+        assert len(mock_admin_server.clusters) == 1
+        created_cluster = mock_admin_server.clusters[0]
+        assert created_cluster == cluster
+
     async def test_list_clusters(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.clusters = [
             Cluster(
                 name="name",
+                default_credits=None,
+                default_quota=Quota(),
             ),
             Cluster(
                 name="name2",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
 
@@ -235,9 +274,13 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="name",
+                default_credits=None,
+                default_quota=Quota(),
             ),
             Cluster(
                 name="name2",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
 
@@ -252,9 +295,13 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="name",
+                default_credits=None,
+                default_quota=Quota(),
             ),
             Cluster(
                 name="name2",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
 
@@ -378,6 +425,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -421,6 +470,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -462,6 +513,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -508,6 +561,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -546,6 +601,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.orgs = [
@@ -741,6 +798,28 @@ class TestAdminClient:
 
         assert mock_admin_server.org_clusters == [res_org]
 
+    async def test_create_org_cluster_with_defaults(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_cluster(name="test")
+            await client.create_org(
+                name="test_org",
+            )
+            res_org = await client.create_org_cluster(
+                cluster_name="test",
+                org_name="test_org",
+                default_credits=Decimal(20),
+                default_quota=Quota(total_running_jobs=42),
+            )
+
+        assert res_org.cluster_name == "test"
+        assert res_org.org_name == "test_org"
+        assert res_org.default_credits == Decimal(20)
+        assert res_org.default_quota == Quota(total_running_jobs=42)
+
+        assert mock_admin_server.org_clusters == [res_org]
+
     async def test_update_org_cluster(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:
             await client.create_cluster(name="test")
@@ -750,7 +829,12 @@ class TestAdminClient:
             res_org = await client.create_org_cluster(
                 cluster_name="test", org_name="test_org"
             )
-            new_org_cluster = replace(res_org, balance=Balance(credits=Decimal(22)))
+            new_org_cluster = replace(
+                res_org,
+                balance=Balance(credits=Decimal(22)),
+                default_credits=Decimal(20),
+                default_quota=Quota(total_running_jobs=42),
+            )
             await client.update_org_cluster(new_org_cluster)
 
         assert mock_admin_server.org_clusters == [new_org_cluster]
@@ -767,6 +851,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -802,6 +888,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -842,6 +930,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -876,6 +966,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -916,6 +1008,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -952,6 +1046,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -984,6 +1080,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.orgs = [
@@ -1031,6 +1129,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.orgs = [
@@ -1078,6 +1178,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.orgs = [
@@ -1110,6 +1212,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
 
@@ -1136,6 +1240,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -1173,6 +1279,8 @@ class TestAdminClient:
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
             ),
         ]
         mock_admin_server.org_clusters = [
