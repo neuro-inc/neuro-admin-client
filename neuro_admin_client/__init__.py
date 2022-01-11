@@ -443,7 +443,7 @@ class AdminClientABC(abc.ABC):
         ...
 
     @abstractmethod
-    async def update_org_cluster(self, org_cluster: OrgCluster) -> OrgCluster:
+    async def update_org_cluster(self, org_cluster: OrgCluster) -> None:
         ...
 
     @abstractmethod
@@ -1394,7 +1394,7 @@ class AdminClientBase:
             raw_data = await resp.json()
             return self._parse_org_cluster(cluster_name, raw_data)
 
-    async def update_org_cluster(self, org_cluster: OrgCluster) -> OrgCluster:
+    async def update_org_cluster(self, org_cluster: OrgCluster) -> None:
         payload: dict[str, Any] = {
             "org_name": org_cluster.org_name,
             "quota": {},
@@ -1421,8 +1421,6 @@ class AdminClientBase:
             json=payload,
         ) as resp:
             resp.raise_for_status()
-            raw_data = await resp.json()
-            return self._parse_org_cluster(org_cluster.cluster_name, raw_data)
 
     async def delete_org_cluster(
         self,
@@ -2226,8 +2224,8 @@ class AdminClientDummy(AdminClientABC):
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
 
-    async def update_org_cluster(self, org_cluster: OrgCluster) -> OrgCluster:
-        return self.DUMMY_ORG_CLUSTER
+    async def update_org_cluster(self, org_cluster: OrgCluster) -> None:
+        pass
 
     async def delete_org_cluster(
         self,
