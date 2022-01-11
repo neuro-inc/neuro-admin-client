@@ -164,9 +164,10 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
         with_user_info: Literal[True],
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo:
         ...
@@ -177,21 +178,22 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
         with_user_info: Literal[False] = ...,
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser:
         ...
 
-    @abstractmethod
     async def create_cluster_user(
         self,
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
@@ -917,9 +919,10 @@ class AdminClientBase:
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
         with_user_info: Literal[True],
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo:
         ...
@@ -930,9 +933,10 @@ class AdminClientBase:
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
         with_user_info: Literal[False] = ...,
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser:
         ...
@@ -942,20 +946,19 @@ class AdminClientBase:
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
         payload: dict[str, Any] = {"user_name": user_name, "role": role.value}
         if org_name:
             payload["org_name"] = org_name
-        quota_payload = self._quota_to_payload(quota)
-        if quota_payload:
-            payload["quota"] = quota_payload
-        balance_payload = self._balance_to_payload(balance)
-        if quota_payload:
-            payload["balance"] = balance_payload
+        if quota:
+            payload["quota"] = self._quota_to_payload(quota)
+        if balance:
+            payload["balance"] = self._balance_to_payload(balance)
 
         async with self._request(
             "POST",
@@ -1955,9 +1958,10 @@ class AdminClientDummy(AdminClientABC):
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
         with_user_info: Literal[True],
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo:
         ...
@@ -1968,9 +1972,10 @@ class AdminClientDummy(AdminClientABC):
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
         with_user_info: Literal[False] = ...,
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser:
         ...
@@ -1980,8 +1985,9 @@ class AdminClientDummy(AdminClientABC):
         cluster_name: str,
         user_name: str,
         role: ClusterUserRoleType,
-        quota: Quota,
-        balance: Balance,
+        *,
+        quota: Quota | None = None,
+        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
