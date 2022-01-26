@@ -105,6 +105,7 @@ class OrgCluster:
     quota: Quota
     default_credits: Optional[Decimal] = None
     default_quota: Quota = Quota()
+    storage_size_mb: Optional[int] = None
 
 
 @unique

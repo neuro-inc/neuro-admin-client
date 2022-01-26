@@ -427,6 +427,7 @@ class AdminClientABC(abc.ABC):
         balance: Balance = Balance(),
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        storage_size_mb: int | None = None,
     ) -> OrgCluster:
         ...
 
@@ -1331,6 +1332,7 @@ class AdminClientBase:
             if payload.get("default_credits")
             else None,
             default_quota=self._parse_quota(payload.get("default_quota")),
+            storage_size_mb=payload.get("storage_size_mb"),
         )
 
     async def create_org_cluster(
@@ -1341,6 +1343,7 @@ class AdminClientBase:
         balance: Balance = Balance(),
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        storage_size_mb: int | None = None,
     ) -> OrgCluster:
         payload: dict[str, Any] = {
             "org_name": org_name,
@@ -1360,6 +1363,8 @@ class AdminClientBase:
             payload["default_quota"][
                 "total_running_jobs"
             ] = default_quota.total_running_jobs
+        if storage_size_mb is not None:
+            payload["storage_size_mb"] = storage_size_mb
         async with self._request(
             "POST",
             f"clusters/{cluster_name}/orgs",
@@ -1831,6 +1836,7 @@ class AdminClientDummy(AdminClientABC):
         cluster_name="default",
         balance=Balance(),
         quota=Quota(),
+        storage_size_mb=1024,
     )
     DUMMY_ORG_USER = OrgUserWithInfo(
         org_name="org",
@@ -2211,6 +2217,7 @@ class AdminClientDummy(AdminClientABC):
         balance: Balance = Balance(),
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        storage_size_mb: int | None = None,
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
 
