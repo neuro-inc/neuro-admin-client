@@ -790,11 +790,12 @@ class TestAdminClient:
                 name="test_org",
             )
             res_org = await client.create_org_cluster(
-                cluster_name="test", org_name="test_org"
+                cluster_name="test", org_name="test_org", storage_size_mb=1024
             )
 
         assert res_org.cluster_name == "test"
         assert res_org.org_name == "test_org"
+        assert res_org.storage_size_mb == 1024
 
         assert mock_admin_server.org_clusters == [res_org]
 

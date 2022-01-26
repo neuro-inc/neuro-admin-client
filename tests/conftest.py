@@ -620,6 +620,8 @@ class AdminServer:
             res["default_quota"][
                 "total_running_jobs"
             ] = org_cluster.default_quota.total_running_jobs
+        if org_cluster.storage_size_mb is not None:
+            res["storage_size_mb"] = org_cluster.storage_size_mb
         return res
 
     async def handle_org_cluster_post(
@@ -650,6 +652,7 @@ class AdminServer:
             default_credits=Decimal(default_credits_raw)
             if default_credits_raw
             else None,
+            storage_size_mb=payload.get("storage_size_mb"),
         )
         self.org_clusters.append(new_org_cluster)
         return aiohttp.web.json_response(
