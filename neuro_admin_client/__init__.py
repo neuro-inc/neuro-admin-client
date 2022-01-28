@@ -456,6 +456,16 @@ class AdminClientABC(abc.ABC):
         ...
 
     @abstractmethod
+    async def update_org_cluster_defaults(
+        self,
+        cluster_name: str,
+        org_name: str,
+        default_quota: Quota = Quota(),
+        default_credits: Decimal | None = None,
+    ) -> OrgCluster:
+        ...
+
+    @abstractmethod
     async def update_org_cluster_quota(
         self,
         cluster_name: str,
@@ -1438,6 +1448,31 @@ class AdminClientBase:
         ) as resp:
             resp.raise_for_status()
 
+    async def update_org_cluster_defaults(
+        self,
+        cluster_name: str,
+        org_name: str,
+        default_quota: Quota = Quota(),
+        default_credits: Decimal | None = None,
+    ) -> OrgCluster:
+        payload: dict[str, Any] = {
+            "default_quota": {},
+        }
+        if default_credits:
+            payload["default_credits"] = str(default_credits)
+        if default_quota.total_running_jobs is not None:
+            payload["default_quota"][
+                "total_running_jobs"
+            ] = default_quota.total_running_jobs
+        async with self._request(
+            "PATCH",
+            f"clusters/{cluster_name}/orgs/{org_name}/defaults",
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org_cluster = await resp.json()
+            return self._parse_org_cluster(cluster_name, raw_org_cluster)
+
     async def update_org_cluster_quota(
         self,
         cluster_name: str,
@@ -2240,6 +2275,15 @@ class AdminClientDummy(AdminClientABC):
         org_name: str,
     ) -> None:
         pass
+
+    async def update_org_cluster_defaults(
+        self,
+        cluster_name: str,
+        org_name: str,
+        default_quota: Quota = Quota(),
+        default_credits: Decimal | None = None,
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
 
     async def update_org_cluster_quota(
         self,

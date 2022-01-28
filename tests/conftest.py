@@ -744,6 +744,36 @@ class AdminServer:
         ]
         return aiohttp.web.json_response(resp)
 
+    async def handle_org_cluster_patch_defaults(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org_cluster in enumerate(self.org_clusters):
+            if (
+                org_cluster.cluster_name == cluster_name
+                and org_cluster.org_name == org_name
+            ):
+                default_credits_raw = payload.get("default_credits")
+                org_cluster = replace(
+                    org_cluster,
+                    default_quota=Quota(
+                        total_running_jobs=payload.get("default_quota", {}).get(
+                            "total_running_jobs"
+                        )
+                    ),
+                    default_credits=Decimal(default_credits_raw)
+                    if default_credits_raw
+                    else None,
+                )
+                self.org_clusters[index] = org_cluster
+                return aiohttp.web.json_response(
+                    self._serialize_org_cluster(org_cluster)
+                )
+        raise aiohttp.web.HTTPNotFound
+
     async def handle_org_cluster_patch_quota(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
@@ -973,6 +1003,10 @@ async def mock_admin_server(
                 aiohttp.web.post(
                     "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/spending",
                     admin_server.handle_cluster_user_add_spending,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/defaults",
+                    admin_server.handle_org_cluster_patch_defaults,
                 ),
                 # patch org quota endpoints:
                 aiohttp.web.patch(
