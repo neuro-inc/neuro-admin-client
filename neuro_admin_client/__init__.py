@@ -1456,14 +1456,12 @@ class AdminClientBase:
         default_credits: Decimal | None = None,
     ) -> OrgCluster:
         payload: dict[str, Any] = {
-            "default_quota": {},
+            "quota": {},
         }
         if default_credits:
-            payload["default_credits"] = str(default_credits)
+            payload["credits"] = str(default_credits)
         if default_quota.total_running_jobs is not None:
-            payload["default_quota"][
-                "total_running_jobs"
-            ] = default_quota.total_running_jobs
+            payload["quota"]["total_running_jobs"] = default_quota.total_running_jobs
         async with self._request(
             "PATCH",
             f"clusters/{cluster_name}/orgs/{org_name}/defaults",

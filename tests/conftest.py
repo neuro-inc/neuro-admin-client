@@ -756,11 +756,11 @@ class AdminServer:
                 org_cluster.cluster_name == cluster_name
                 and org_cluster.org_name == org_name
             ):
-                default_credits_raw = payload.get("default_credits")
+                default_credits_raw = payload.get("credits")
                 org_cluster = replace(
                     org_cluster,
                     default_quota=Quota(
-                        total_running_jobs=payload.get("default_quota", {}).get(
+                        total_running_jobs=payload.get("quota", {}).get(
                             "total_running_jobs"
                         )
                     ),
