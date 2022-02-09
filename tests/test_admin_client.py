@@ -1230,6 +1230,43 @@ class TestAdminClient:
             assert mock_admin_server.debts[0].user_name == "test1"
             assert mock_admin_server.debts[0].credits == Decimal(15)
 
+    async def test_patch_org_cluster_defaults(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+            ),
+        ]
+        mock_admin_server.clusters = [
+            Cluster(
+                name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
+            ),
+        ]
+        mock_admin_server.org_clusters = [
+            OrgCluster(
+                org_name="org",
+                cluster_name="cluster",
+                balance=Balance(),
+                quota=Quota(total_running_jobs=10),
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org_cluster = await client.update_org_cluster_defaults(
+                cluster_name="cluster",
+                org_name="org",
+                default_quota=Quota(total_running_jobs=20),
+                default_credits=Decimal(42),
+            )
+            assert org_cluster.default_quota.total_running_jobs == 20
+            assert org_cluster.default_credits == Decimal(42)
+
+            server_org_cluster = mock_admin_server.org_clusters[0]
+            assert org_cluster == server_org_cluster
+
     async def test_patch_org_cluster_quota(
         self, mock_admin_server: AdminServer
     ) -> None:
