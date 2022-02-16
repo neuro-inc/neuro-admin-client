@@ -157,6 +157,7 @@ class AdminServer:
         resp: dict[str, Any] = {
             "name": cluster.name,
             "default_quota": {},
+            "maintenance": cluster.maintenance,
         }
         if cluster.default_credits:
             resp["default_credits"] = str(cluster.default_credits)
@@ -187,6 +188,7 @@ class AdminServer:
                     default_quota_raw.get("total_running_jobs")
                 )
             ),
+            maintenance=payload.get("maintenance", False),
         )
         self.clusters.append(new_cluster)
         return aiohttp.web.json_response(self._serialize_cluster(new_cluster))
@@ -211,6 +213,7 @@ class AdminServer:
                     default_quota_raw.get("total_running_jobs")
                 )
             ),
+            maintenance=payload.get("maintenance", False),
         )
         self.clusters = [
             cluster for cluster in self.clusters if cluster.name != changed_cluster.name
@@ -609,6 +612,7 @@ class AdminServer:
                 "spent_credits": str(org_cluster.balance.spent_credits),
             },
             "default_quota": {},
+            "maintenance": org_cluster.maintenance,
         }
         if org_cluster.quota.total_running_jobs is not None:
             res["quota"]["total_running_jobs"] = org_cluster.quota.total_running_jobs
@@ -653,6 +657,7 @@ class AdminServer:
             if default_credits_raw
             else None,
             storage_size_mb=payload.get("storage_size_mb"),
+            maintenance=payload.get("maintenance", False),
         )
         self.org_clusters.append(new_org_cluster)
         return aiohttp.web.json_response(
@@ -690,6 +695,7 @@ class AdminServer:
             default_credits=Decimal(default_credits_raw)
             if default_credits_raw
             else None,
+            maintenance=payload["maintenance"],
         )
         assert new_org_cluster.org_name == org_name
         self.org_clusters = [

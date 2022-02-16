@@ -738,6 +738,7 @@ class AdminClientBase:
             if payload.get("default_credits")
             else None,
             default_quota=self._parse_quota(payload.get("default_quota")),
+            maintenance=payload["maintenance"],
         )
 
     async def list_clusters(self) -> list[Cluster]:
@@ -760,10 +761,12 @@ class AdminClientBase:
         name: str,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
+        maintenance: bool = False,
     ) -> Cluster:
         payload: dict[str, Any] = {
             "name": name,
             "default_quota": {},
+            "maintenance": maintenance,
         }
         if default_credits:
             payload["default_credits"] = str(default_credits)
@@ -782,6 +785,7 @@ class AdminClientBase:
     ) -> None:
         payload: dict[str, Any] = {
             "name": cluster.name,
+            "maintenance": cluster.maintenance,
         }
         if cluster.default_credits:
             payload["default_credits"] = str(cluster.default_credits)
@@ -1343,6 +1347,7 @@ class AdminClientBase:
             else None,
             default_quota=self._parse_quota(payload.get("default_quota")),
             storage_size_mb=payload.get("storage_size_mb"),
+            maintenance=payload["maintenance"],
         )
 
     async def create_org_cluster(
@@ -1354,12 +1359,14 @@ class AdminClientBase:
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
         storage_size_mb: int | None = None,
+        maintenance: bool = False,
     ) -> OrgCluster:
         payload: dict[str, Any] = {
             "org_name": org_name,
             "quota": {},
             "balance": {},
             "default_quota": {},
+            "maintenance": maintenance,
         }
         if quota.total_running_jobs is not None:
             payload["quota"]["total_running_jobs"] = quota.total_running_jobs
@@ -1415,6 +1422,7 @@ class AdminClientBase:
             "quota": {},
             "balance": {},
             "default_quota": {},
+            "maintenance": org_cluster.maintenance,
         }
         if org_cluster.quota.total_running_jobs is not None:
             payload["quota"][

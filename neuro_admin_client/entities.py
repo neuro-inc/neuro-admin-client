@@ -57,6 +57,7 @@ class Cluster:
     name: str
     default_credits: Optional[Decimal]
     default_quota: Quota
+    maintenance: bool = False
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,7 @@ class OrgCluster:
     default_credits: Optional[Decimal] = None
     default_quota: Quota = Quota()
     storage_size_mb: Optional[int] = None
+    maintenance: bool = False
 
 
 @unique

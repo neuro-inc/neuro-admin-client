@@ -218,6 +218,7 @@ class TestAdminClient:
         assert len(mock_admin_server.clusters) == 1
         created_cluster = mock_admin_server.clusters[0]
         assert created_cluster.name == "name"
+        assert not created_cluster.maintenance
 
     async def test_create_cluster_with_defaults(
         self, mock_admin_server: AdminServer
@@ -235,11 +236,26 @@ class TestAdminClient:
         assert created_cluster.default_credits == Decimal(20)
         assert created_cluster.default_quota == Quota(total_running_jobs=42)
 
+    async def test_create_cluster_with_maintenance(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_cluster(
+                name="name",
+                maintenance=True,
+            )
+
+        assert len(mock_admin_server.clusters) == 1
+        created_cluster = mock_admin_server.clusters[0]
+        assert created_cluster.name == "name"
+        assert created_cluster.maintenance
+
     async def test_update_cluster(self, mock_admin_server: AdminServer) -> None:
         cluster = Cluster(
             name="name",
             default_credits=Decimal(20),
             default_quota=Quota(total_running_jobs=42),
+            maintenance=True,
         )
 
         async with AdminClient(base_url=mock_admin_server.url) as client:
@@ -796,6 +812,7 @@ class TestAdminClient:
         assert res_org.cluster_name == "test"
         assert res_org.org_name == "test_org"
         assert res_org.storage_size_mb == 1024
+        assert not res_org.maintenance
 
         assert mock_admin_server.org_clusters == [res_org]
 
@@ -821,6 +838,26 @@ class TestAdminClient:
 
         assert mock_admin_server.org_clusters == [res_org]
 
+    async def test_create_org_cluster_with_maintenance(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_cluster(name="test")
+            await client.create_org(
+                name="test_org",
+            )
+            res_org = await client.create_org_cluster(
+                cluster_name="test",
+                org_name="test_org",
+                maintenance=True,
+            )
+
+        assert res_org.cluster_name == "test"
+        assert res_org.org_name == "test_org"
+        assert res_org.maintenance
+
+        assert mock_admin_server.org_clusters == [res_org]
+
     async def test_update_org_cluster(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:
             await client.create_cluster(name="test")
@@ -835,6 +872,7 @@ class TestAdminClient:
                 balance=Balance(credits=Decimal(22)),
                 default_credits=Decimal(20),
                 default_quota=Quota(total_running_jobs=42),
+                maintenance=True,
             )
             await client.update_org_cluster(new_org_cluster)
 
