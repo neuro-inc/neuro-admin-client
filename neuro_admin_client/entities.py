@@ -114,6 +114,7 @@ class OrgCluster:
 class ClusterUserRoleType(str, Enum):
     ADMIN = "admin"
     MANAGER = "manager"
+    MEMBER = "member"
     USER = "user"
 
     def __str__(self) -> str:
