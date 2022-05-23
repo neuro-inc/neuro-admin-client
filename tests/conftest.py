@@ -667,6 +667,7 @@ class AdminServer:
             default_role=ClusterUserRoleType(
                 payload.get("default_role", ClusterUserRoleType.USER.value)
             ),
+            storage_size_mb=payload.get("storage_size_mb"),
             maintenance=payload.get("maintenance", False),
         )
         self.org_clusters.append(new_org_cluster)
