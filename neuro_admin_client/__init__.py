@@ -87,6 +87,7 @@ class AdminClientABC(abc.ABC):
         name: str,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> Cluster:
         ...
 
@@ -427,6 +428,7 @@ class AdminClientABC(abc.ABC):
         balance: Balance = Balance(),
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         storage_size_mb: int | None = None,
     ) -> OrgCluster:
         ...
@@ -462,6 +464,7 @@ class AdminClientABC(abc.ABC):
         org_name: str,
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> OrgCluster:
         ...
 
@@ -738,6 +741,7 @@ class AdminClientBase:
             if payload.get("default_credits")
             else None,
             default_quota=self._parse_quota(payload.get("default_quota")),
+            default_role=ClusterUserRoleType(payload["default_role"]),
             maintenance=payload["maintenance"],
         )
 
@@ -761,11 +765,13 @@ class AdminClientBase:
         name: str,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         maintenance: bool = False,
     ) -> Cluster:
         payload: dict[str, Any] = {
             "name": name,
             "default_quota": {},
+            "default_role": str(default_role),
             "maintenance": maintenance,
         }
         if default_credits:
@@ -786,6 +792,7 @@ class AdminClientBase:
         payload: dict[str, Any] = {
             "name": cluster.name,
             "maintenance": cluster.maintenance,
+            "default_role": str(cluster.default_role),
         }
         if cluster.default_credits:
             payload["default_credits"] = str(cluster.default_credits)
@@ -1346,6 +1353,7 @@ class AdminClientBase:
             if payload.get("default_credits")
             else None,
             default_quota=self._parse_quota(payload.get("default_quota")),
+            default_role=ClusterUserRoleType(payload["default_role"]),
             storage_size_mb=payload.get("storage_size_mb"),
             maintenance=payload["maintenance"],
         )
@@ -1358,6 +1366,7 @@ class AdminClientBase:
         balance: Balance = Balance(),
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         storage_size_mb: int | None = None,
         maintenance: bool = False,
     ) -> OrgCluster:
@@ -1366,6 +1375,7 @@ class AdminClientBase:
             "quota": {},
             "balance": {},
             "default_quota": {},
+            "default_role": str(default_role),
             "maintenance": maintenance,
         }
         if quota.total_running_jobs is not None:
@@ -1422,6 +1432,7 @@ class AdminClientBase:
             "quota": {},
             "balance": {},
             "default_quota": {},
+            "default_role": str(org_cluster.default_role),
             "maintenance": org_cluster.maintenance,
         }
         if org_cluster.quota.total_running_jobs is not None:
@@ -1462,9 +1473,11 @@ class AdminClientBase:
         org_name: str,
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> OrgCluster:
         payload: dict[str, Any] = {
             "quota": {},
+            "default_role": str(default_role),
         }
         if default_credits:
             payload["credits"] = str(default_credits)
@@ -1859,7 +1872,12 @@ class AdminClientDummy(AdminClientABC):
         name="user",
         email="email@example.com",
     )
-    DUMMY_CLUSTER = Cluster(name="default", default_credits=None, default_quota=Quota())
+    DUMMY_CLUSTER = Cluster(
+        name="default",
+        default_credits=None,
+        default_quota=Quota(),
+        default_role=ClusterUserRoleType.USER,
+    )
     DUMMY_CLUSTER_USER = ClusterUserWithInfo(
         cluster_name="default",
         user_name="user",
@@ -1930,6 +1948,7 @@ class AdminClientDummy(AdminClientABC):
         name: str,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> Cluster:
         return self.DUMMY_CLUSTER
 
@@ -2258,6 +2277,7 @@ class AdminClientDummy(AdminClientABC):
         balance: Balance = Balance(),
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         storage_size_mb: int | None = None,
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
@@ -2288,6 +2308,7 @@ class AdminClientDummy(AdminClientABC):
         org_name: str,
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
 
