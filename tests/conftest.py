@@ -157,6 +157,7 @@ class AdminServer:
         resp: dict[str, Any] = {
             "name": cluster.name,
             "default_quota": {},
+            "default_role": str(cluster.default_role),
             "maintenance": cluster.maintenance,
         }
         if cluster.default_credits:
@@ -188,6 +189,9 @@ class AdminServer:
                     default_quota_raw.get("total_running_jobs")
                 )
             ),
+            default_role=ClusterUserRoleType(
+                payload.get("default_role", ClusterUserRoleType.USER.value)
+            ),
             maintenance=payload.get("maintenance", False),
         )
         self.clusters.append(new_cluster)
@@ -212,6 +216,9 @@ class AdminServer:
                 total_running_jobs=self._int_or_none(
                     default_quota_raw.get("total_running_jobs")
                 )
+            ),
+            default_role=ClusterUserRoleType(
+                payload.get("default_role", ClusterUserRoleType.USER.value)
             ),
             maintenance=payload.get("maintenance", False),
         )
@@ -612,6 +619,7 @@ class AdminServer:
                 "spent_credits": str(org_cluster.balance.spent_credits),
             },
             "default_quota": {},
+            "default_role": str(org_cluster.default_role),
             "maintenance": org_cluster.maintenance,
         }
         if org_cluster.quota.total_running_jobs is not None:
@@ -656,6 +664,9 @@ class AdminServer:
             default_credits=Decimal(default_credits_raw)
             if default_credits_raw
             else None,
+            default_role=ClusterUserRoleType(
+                payload.get("default_role", ClusterUserRoleType.USER.value)
+            ),
             storage_size_mb=payload.get("storage_size_mb"),
             maintenance=payload.get("maintenance", False),
         )
@@ -695,6 +706,9 @@ class AdminServer:
             default_credits=Decimal(default_credits_raw)
             if default_credits_raw
             else None,
+            default_role=ClusterUserRoleType(
+                payload.get("default_role", ClusterUserRoleType.USER.value)
+            ),
             maintenance=payload["maintenance"],
         )
         assert new_org_cluster.org_name == org_name
@@ -773,6 +787,9 @@ class AdminServer:
                     default_credits=Decimal(default_credits_raw)
                     if default_credits_raw
                     else None,
+                    default_role=ClusterUserRoleType(
+                        payload.get("default_role", ClusterUserRoleType.USER.value)
+                    ),
                 )
                 self.org_clusters[index] = org_cluster
                 return aiohttp.web.json_response(

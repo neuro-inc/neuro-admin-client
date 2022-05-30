@@ -52,11 +52,26 @@ class Quota:
     total_running_jobs: Optional[int] = None
 
 
+@unique
+class ClusterUserRoleType(str, Enum):
+    ADMIN = "admin"
+    MANAGER = "manager"
+    MEMBER = "member"
+    USER = "user"
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.__str__().__repr__()
+
+
 @dataclass(frozen=True)
 class Cluster:
     name: str
     default_credits: Optional[Decimal]
     default_quota: Quota
+    default_role: ClusterUserRoleType
     maintenance: bool = False
 
 
@@ -106,22 +121,9 @@ class OrgCluster:
     quota: Quota
     default_credits: Optional[Decimal] = None
     default_quota: Quota = Quota()
+    default_role: ClusterUserRoleType = ClusterUserRoleType.USER
     storage_size_mb: Optional[int] = None
     maintenance: bool = False
-
-
-@unique
-class ClusterUserRoleType(str, Enum):
-    ADMIN = "admin"
-    MANAGER = "manager"
-    MEMBER = "member"
-    USER = "user"
-
-    def __str__(self) -> str:
-        return self.value
-
-    def __repr__(self) -> str:
-        return self.__str__().__repr__()
 
 
 @dataclass(frozen=True)

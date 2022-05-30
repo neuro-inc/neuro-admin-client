@@ -117,11 +117,13 @@ class TestAdminClient:
                 name="cluster1",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
             Cluster(
                 name="cluster2",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -228,6 +230,7 @@ class TestAdminClient:
                 name="name",
                 default_credits=Decimal(20),
                 default_quota=Quota(total_running_jobs=42),
+                default_role=ClusterUserRoleType.MANAGER,
             )
 
         assert len(mock_admin_server.clusters) == 1
@@ -235,6 +238,7 @@ class TestAdminClient:
         assert created_cluster.name == "name"
         assert created_cluster.default_credits == Decimal(20)
         assert created_cluster.default_quota == Quota(total_running_jobs=42)
+        assert created_cluster.default_role == ClusterUserRoleType.MANAGER
 
     async def test_create_cluster_with_maintenance(
         self, mock_admin_server: AdminServer
@@ -256,6 +260,7 @@ class TestAdminClient:
             default_credits=Decimal(20),
             default_quota=Quota(total_running_jobs=42),
             maintenance=True,
+            default_role=ClusterUserRoleType.USER,
         )
 
         async with AdminClient(base_url=mock_admin_server.url) as client:
@@ -272,11 +277,13 @@ class TestAdminClient:
                 name="name",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
             Cluster(
                 name="name2",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
 
@@ -292,11 +299,13 @@ class TestAdminClient:
                 name="name",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
             Cluster(
                 name="name2",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
 
@@ -313,11 +322,13 @@ class TestAdminClient:
                 name="name",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
             Cluster(
                 name="name2",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
 
@@ -443,6 +454,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -488,6 +500,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -531,6 +544,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -579,6 +593,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -619,6 +634,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.orgs = [
@@ -829,12 +845,14 @@ class TestAdminClient:
                 org_name="test_org",
                 default_credits=Decimal(20),
                 default_quota=Quota(total_running_jobs=42),
+                default_role=ClusterUserRoleType.MEMBER,
             )
 
         assert res_org.cluster_name == "test"
         assert res_org.org_name == "test_org"
         assert res_org.default_credits == Decimal(20)
         assert res_org.default_quota == Quota(total_running_jobs=42)
+        assert res_org.default_role == ClusterUserRoleType.MEMBER
 
         assert mock_admin_server.org_clusters == [res_org]
 
@@ -892,6 +910,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -929,6 +948,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -971,6 +991,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -1007,6 +1028,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -1049,6 +1071,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -1087,6 +1110,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.cluster_users = [
@@ -1121,6 +1145,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.orgs = [
@@ -1170,6 +1195,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.orgs = [
@@ -1219,6 +1245,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.orgs = [
@@ -1253,6 +1280,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
 
@@ -1281,6 +1309,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -1298,9 +1327,11 @@ class TestAdminClient:
                 org_name="org",
                 default_quota=Quota(total_running_jobs=20),
                 default_credits=Decimal(42),
+                default_role=ClusterUserRoleType.MEMBER,
             )
             assert org_cluster.default_quota.total_running_jobs == 20
             assert org_cluster.default_credits == Decimal(42)
+            assert org_cluster.default_role == ClusterUserRoleType.MEMBER
 
             server_org_cluster = mock_admin_server.org_clusters[0]
             assert org_cluster == server_org_cluster
@@ -1318,6 +1349,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.org_clusters = [
@@ -1357,6 +1389,7 @@ class TestAdminClient:
                 name="cluster",
                 default_credits=None,
                 default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
             ),
         ]
         mock_admin_server.org_clusters = [
