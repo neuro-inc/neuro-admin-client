@@ -122,7 +122,7 @@ class OrgCluster:
     default_credits: Optional[Decimal] = None
     default_quota: Quota = Quota()
     default_role: ClusterUserRoleType = ClusterUserRoleType.USER
-    storage_size_mb: Optional[int] = None
+    storage_size: Optional[int] = None
     maintenance: bool = False
 
 

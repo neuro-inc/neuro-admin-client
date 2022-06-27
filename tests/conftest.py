@@ -632,8 +632,8 @@ class AdminServer:
             res["default_quota"][
                 "total_running_jobs"
             ] = org_cluster.default_quota.total_running_jobs
-        if org_cluster.storage_size_mb is not None:
-            res["storage_size_mb"] = org_cluster.storage_size_mb
+        if org_cluster.storage_size is not None:
+            res["storage_size"] = org_cluster.storage_size
         return res
 
     async def handle_org_cluster_post(
@@ -667,7 +667,7 @@ class AdminServer:
             default_role=ClusterUserRoleType(
                 payload.get("default_role", ClusterUserRoleType.USER.value)
             ),
-            storage_size_mb=payload.get("storage_size_mb"),
+            storage_size=payload.get("storage_size"),
             maintenance=payload.get("maintenance", False),
         )
         self.org_clusters.append(new_org_cluster)

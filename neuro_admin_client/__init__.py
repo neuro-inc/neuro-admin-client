@@ -429,7 +429,7 @@ class AdminClientABC(abc.ABC):
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
-        storage_size_mb: int | None = None,
+        storage_size: int | None = None,
     ) -> OrgCluster:
         ...
 
@@ -1354,7 +1354,7 @@ class AdminClientBase:
             else None,
             default_quota=self._parse_quota(payload.get("default_quota")),
             default_role=ClusterUserRoleType(payload["default_role"]),
-            storage_size_mb=payload.get("storage_size_mb"),
+            storage_size=payload.get("storage_size"),
             maintenance=payload["maintenance"],
         )
 
@@ -1367,7 +1367,7 @@ class AdminClientBase:
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
-        storage_size_mb: int | None = None,
+        storage_size: int | None = None,
         maintenance: bool = False,
     ) -> OrgCluster:
         payload: dict[str, Any] = {
@@ -1390,8 +1390,8 @@ class AdminClientBase:
             payload["default_quota"][
                 "total_running_jobs"
             ] = default_quota.total_running_jobs
-        if storage_size_mb is not None:
-            payload["storage_size_mb"] = storage_size_mb
+        if storage_size is not None:
+            payload["storage_size"] = storage_size
         async with self._request(
             "POST",
             f"clusters/{cluster_name}/orgs",
@@ -1895,7 +1895,7 @@ class AdminClientDummy(AdminClientABC):
         cluster_name="default",
         balance=Balance(),
         quota=Quota(),
-        storage_size_mb=1024,
+        storage_size=1024,
     )
     DUMMY_ORG_USER = OrgUserWithInfo(
         org_name="org",
@@ -2278,7 +2278,7 @@ class AdminClientDummy(AdminClientABC):
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
-        storage_size_mb: int | None = None,
+        storage_size: int | None = None,
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
 
