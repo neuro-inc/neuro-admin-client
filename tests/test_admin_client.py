@@ -39,6 +39,22 @@ class TestAdminClient:
         assert created_user.name == "name"
         assert created_user.email == "email"
 
+    async def test_create_user_skip_auto_add_to_clusters(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_user(
+                name="name", email="email", skip_auto_add_to_clusters=True
+            )
+
+            assert mock_admin_server.last_skip_auto_add_to_clusters
+
+            await client.create_user(
+                name="name", email="email", skip_auto_add_to_clusters=False
+            )
+
+            assert not mock_admin_server.last_skip_auto_add_to_clusters
+
     async def test_create_user_first_name_last_name(
         self, mock_admin_server: AdminServer
     ) -> None:
@@ -157,6 +173,18 @@ class TestAdminClient:
         assert len(mock_admin_server.orgs) == 1
         created_org = mock_admin_server.orgs[0]
         assert created_org.name == "name"
+
+    async def test_create_org_skip_auto_add_to_clusters(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_org(name="name", skip_auto_add_to_clusters=True)
+
+            assert mock_admin_server.last_skip_auto_add_to_clusters
+
+            await client.create_org(name="name", skip_auto_add_to_clusters=False)
+
+            assert not mock_admin_server.last_skip_auto_add_to_clusters
 
     async def test_list_orgs(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.orgs = [

@@ -57,6 +57,8 @@ class AdminServer:
     org_users: list[OrgUser] = field(default_factory=list)
     debts: list[Debt] = field(default_factory=list)
 
+    last_skip_auto_add_to_clusters: bool = False
+
     @property
     def url(self) -> URL:
         assert self.address
@@ -89,6 +91,9 @@ class AdminServer:
             created_at=datetime.datetime.now(datetime.timezone.utc),
         )
         self.users.append(new_user)
+        self.last_skip_auto_add_to_clusters = _parse_bool(
+            request.query.get("skip_auto_add_to_clusters", "false")
+        )
         return aiohttp.web.json_response(self._serialize_user(new_user))
 
     async def handle_user_get(
@@ -126,6 +131,9 @@ class AdminServer:
             name=payload["name"],
         )
         self.orgs.append(new_org)
+        self.last_skip_auto_add_to_clusters = _parse_bool(
+            request.query.get("skip_auto_add_to_clusters", "false")
+        )
         return aiohttp.web.json_response(self._serialize_org(new_org))
 
     async def handle_org_get(

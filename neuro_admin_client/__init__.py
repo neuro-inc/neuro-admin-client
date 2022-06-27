@@ -63,6 +63,7 @@ class AdminClientABC(abc.ABC):
         email: str,
         first_name: str | None = None,
         last_name: str | None = None,
+        skip_auto_add_to_clusters: bool = False,
     ) -> User:
         ...
 
@@ -524,6 +525,7 @@ class AdminClientABC(abc.ABC):
     async def create_org(
         self,
         name: str,
+        skip_auto_add_to_clusters: bool = False,
     ) -> Org:
         ...
 
@@ -708,6 +710,7 @@ class AdminClientBase:
         email: str,
         first_name: str | None = None,
         last_name: str | None = None,
+        skip_auto_add_to_clusters: bool = False,
     ) -> User:
         payload = {
             "name": name,
@@ -715,7 +718,14 @@ class AdminClientBase:
             "first_name": first_name,
             "last_name": last_name,
         }
-        async with self._request("POST", "users", json=payload) as resp:
+        async with self._request(
+            "POST",
+            "users",
+            json=payload,
+            params={
+                "skip_auto_add_to_clusters": _to_query_bool(skip_auto_add_to_clusters)
+            },
+        ) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_user_payload(raw_user)
@@ -1606,11 +1616,19 @@ class AdminClientBase:
     async def create_org(
         self,
         name: str,
+        skip_auto_add_to_clusters: bool = False,
     ) -> Org:
         payload = {
             "name": name,
         }
-        async with self._request("POST", "orgs", json=payload) as resp:
+        async with self._request(
+            "POST",
+            "orgs",
+            json=payload,
+            params={
+                "skip_auto_add_to_clusters": _to_query_bool(skip_auto_add_to_clusters)
+            },
+        ) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
             return self._parse_org_payload(raw_org)
@@ -1928,6 +1946,7 @@ class AdminClientDummy(AdminClientABC):
         email: str,
         first_name: str | None = None,
         last_name: str | None = None,
+        skip_auto_add_to_clusters: bool = False,
     ) -> User:
         return self.DUMMY_USER
 
@@ -2361,6 +2380,7 @@ class AdminClientDummy(AdminClientABC):
     async def create_org(
         self,
         name: str,
+        skip_auto_add_to_clusters: bool = False,
     ) -> Org:
         return self.DUMMY_ORG
 
