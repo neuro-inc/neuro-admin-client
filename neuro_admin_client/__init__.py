@@ -24,6 +24,10 @@ from neuro_admin_client.entities import (
     OrgUser,
     OrgUserRoleType,
     OrgUserWithInfo,
+    Project,
+    ProjectUser,
+    ProjectUserRoleType,
+    ProjectUserWithInfo,
     Quota,
     User,
     UserInfo,
@@ -621,6 +625,165 @@ class AdminClientABC(abc.ABC):
 
     @abstractmethod
     async def delete_org_user(self, org_name: str, user_name: str) -> None:
+        ...
+
+    # projects
+
+    @abstractmethod
+    async def create_project(
+        self,
+        name: str,
+        cluster_name: str,
+        org_name: str | None,
+        is_default: bool = False,
+        default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
+    ) -> Project:
+        ...
+
+    @abstractmethod
+    async def list_projects(
+        self, cluster_name: str, org_name: str | None = None
+    ) -> list[Project]:
+        ...
+
+    @abstractmethod
+    async def get_project(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+    ) -> Project:
+        ...
+
+    @abstractmethod
+    async def update_project(self, project: Project) -> None:
+        ...
+
+    @abstractmethod
+    async def delete_project(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+    ) -> None:
+        ...
+
+    #  project user
+
+    @overload
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: Literal[True],
+    ) -> list[ProjectUserWithInfo]:
+        ...
+
+    @overload
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: Literal[False] = ...,
+    ) -> list[ProjectUser]:
+        ...
+
+    @abstractmethod
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: bool = False,
+    ) -> list[ProjectUser] | list[ProjectUserWithInfo]:
+        ...
+
+    @overload
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: Literal[True],
+    ) -> ProjectUserWithInfo:
+        ...
+
+    @overload
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: Literal[False] = ...,
+    ) -> ProjectUser:
+        ...
+
+    @abstractmethod
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: bool = False,
+    ) -> ProjectUser | ProjectUserWithInfo:
+        ...
+
+    @overload
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: Literal[True],
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUserWithInfo:
+        ...
+
+    @overload
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: Literal[False] = ...,
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUser:
+        ...
+
+    @abstractmethod
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: bool = False,
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUser | ProjectUserWithInfo:
+        ...
+
+    @abstractmethod
+    async def update_project_user(self, project_user: ProjectUser) -> None:
+        ...
+
+    @abstractmethod
+    async def delete_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+    ) -> None:
         ...
 
     # OLD API:
@@ -1782,6 +1945,322 @@ class AdminClientBase:
         ) as resp:
             resp.raise_for_status()
 
+    # projects
+
+    def _parse_project(self, payload: dict[str, Any]) -> Project:
+        return Project(
+            name=payload["name"],
+            cluster_name=payload["cluster_name"],
+            org_name=payload["org_name"],
+            is_default=payload["is_default"],
+            default_role=payload["default_role"],
+        )
+
+    async def create_project(
+        self,
+        name: str,
+        cluster_name: str,
+        org_name: str | None,
+        is_default: bool = False,
+        default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
+    ) -> Project:
+        payload = {
+            "name": name,
+            "is_default": is_default,
+            "default_role": default_role,
+        }
+
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/projects"
+        else:
+            url = f"clusters/{cluster_name}/projects"
+
+        async with self._request(
+            "POST",
+            url,
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+            return self._parse_project(await resp.json())
+
+    async def list_projects(
+        self, cluster_name: str, org_name: str | None = None
+    ) -> list[Project]:
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/projects"
+        else:
+            url = f"clusters/{cluster_name}/projects"
+
+        async with self._request(
+            "GET",
+            url,
+        ) as resp:
+            resp.raise_for_status()
+            return [self._parse_project(it) for it in await resp.json()]
+
+    async def get_project(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+    ) -> Project:
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/projects/{project_name}"
+        else:
+            url = f"clusters/{cluster_name}/projects/{project_name}"
+
+        async with self._request(
+            "GET",
+            url,
+        ) as resp:
+            resp.raise_for_status()
+            return self._parse_project(await resp.json())
+
+    async def update_project(self, project: Project) -> None:
+        payload = {
+            "is_default": project.is_default,
+            "default_role": project.default_role,
+        }
+
+        if project.org_name:
+            url = f"clusters/{project.cluster_name}/orgs/{project.org_name}/projects/{project.name}"
+        else:
+            url = f"clusters/{project.cluster_name}/projects{project.name}"
+
+        async with self._request(
+            "PUT",
+            url,
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+
+    async def delete_project(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+    ) -> None:
+        if org_name:
+            url = f"clusters/{cluster_name}/orgs/{org_name}/projects/{project_name}"
+        else:
+            url = f"clusters/{cluster_name}/projects/{project_name}"
+
+        async with self._request(
+            "DELETE",
+            url,
+        ) as resp:
+            resp.raise_for_status()
+
+    # Project users
+
+    def _parse_project_user(
+        self, payload: dict[str, Any]
+    ) -> ProjectUser | ProjectUserWithInfo:
+        project_user = ProjectUser(
+            project_name=payload["project_name"],
+            cluster_name=payload["cluster_name"],
+            org_name=payload["org_name"],
+            user_name=payload["user_name"],
+            role=ProjectUserRoleType(payload["role"]),
+        )
+        if "user_info" in payload:
+            user_info = self._parse_user_info_payload(payload["user_info"])
+            project_user = project_user.add_info(user_info)
+        return project_user
+
+    @overload
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: Literal[True],
+    ) -> list[ProjectUserWithInfo]:
+        ...
+
+    @overload
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: Literal[False] = ...,
+    ) -> list[ProjectUser]:
+        ...
+
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: bool = False,
+    ) -> list[ProjectUser] | list[ProjectUserWithInfo]:
+        if org_name:
+            url = (
+                f"clusters/{cluster_name}/orgs/{org_name}/projects/{project_name}/users"
+            )
+        else:
+            url = f"clusters/{cluster_name}/projects/{project_name}/users"
+
+        async with self._request(
+            "GET",
+            url,
+            params={"with_user_info": _to_query_bool(with_user_info)},
+        ) as resp:
+            resp.raise_for_status()
+            return [self._parse_project_user(it) for it in await resp.json()]
+
+    @overload
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: Literal[True],
+    ) -> ProjectUserWithInfo:
+        ...
+
+    @overload
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: Literal[False] = ...,
+    ) -> ProjectUser:
+        ...
+
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: bool = False,
+    ) -> ProjectUser | ProjectUserWithInfo:
+        if org_name:
+            url = (
+                f"clusters/{cluster_name}/orgs/{org_name}"
+                f"/projects/{project_name}/users/{user_name}"
+            )
+        else:
+            url = f"clusters/{cluster_name}/projects/{project_name}/users/{user_name}"
+
+        async with self._request(
+            "GET",
+            url,
+            params={"with_user_info": _to_query_bool(with_user_info)},
+        ) as resp:
+            resp.raise_for_status()
+            return self._parse_project_user(await resp.json())
+
+    @overload
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: Literal[True],
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUserWithInfo:
+        ...
+
+    @overload
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: Literal[False] = ...,
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUser:
+        ...
+
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: bool = False,
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUser | ProjectUserWithInfo:
+        payload = {
+            "user_name": user_name,
+        }
+        if role:
+            payload["role"] = role.value
+
+        if org_name:
+            url = (
+                f"clusters/{cluster_name}/orgs/{org_name}/projects/{project_name}/users"
+            )
+        else:
+            url = f"clusters/{cluster_name}/projects/{project_name}/users"
+
+        async with self._request(
+            "POST",
+            url,
+            params={"with_user_info": _to_query_bool(with_user_info)},
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+            return self._parse_project_user(await resp.json())
+
+    async def update_project_user(self, project_user: ProjectUser) -> None:
+        payload = {
+            "role": project_user.role.value,
+        }
+
+        if project_user.org_name:
+            url = (
+                f"clusters/{project_user.cluster_name}"
+                f"/orgs/{project_user.org_name}"
+                f"/projects/{project_user.project_name}"
+                f"/users/{project_user.user_name}"
+            )
+        else:
+            url = (
+                f"clusters/{project_user.cluster_name}"
+                f"/projects/{project_user.project_name}"
+                f"/users/{project_user.user_name}"
+            )
+
+        async with self._request(
+            "PUT",
+            url,
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+
+    async def delete_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+    ) -> None:
+        if org_name:
+            url = (
+                f"clusters/{cluster_name}/orgs/{org_name}"
+                f"/projects/{project_name}/users/{user_name}"
+            )
+        else:
+            url = f"clusters/{cluster_name}/projects/{project_name}/users/{user_name}"
+
+        async with self._request(
+            "DELETE",
+            url,
+        ) as resp:
+            resp.raise_for_status()
+
     # OLD API:
 
     async def add_debt(
@@ -1919,6 +2398,22 @@ class AdminClientDummy(AdminClientABC):
         org_name="org",
         user_name="user",
         role=OrgUserRoleType.ADMIN,
+        user_info=UserInfo(email="email@examle.com"),
+    )
+    DUMMY_PROJECT = Project(
+        name="proj",
+        cluster_name="cluster",
+        org_name="org",
+        is_default=False,
+        default_role=ProjectUserRoleType.WRITER,
+    )
+
+    DUMMY_PROJECT_USER = ProjectUserWithInfo(
+        project_name="proj",
+        cluster_name="cluster",
+        org_name="org",
+        user_name="user",
+        role=ProjectUserRoleType.ADMIN,
         user_info=UserInfo(email="email@examle.com"),
     )
 
@@ -2470,6 +2965,155 @@ class AdminClientDummy(AdminClientABC):
         return self.DUMMY_ORG_USER
 
     async def delete_org_user(self, org_name: str, user_name: str) -> None:
+        pass
+
+    # projects
+
+    async def create_project(
+        self,
+        name: str,
+        cluster_name: str,
+        org_name: str | None,
+        is_default: bool = False,
+        default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
+    ) -> Project:
+        return self.DUMMY_PROJECT
+
+    async def list_projects(
+        self, cluster_name: str, org_name: str | None = None
+    ) -> list[Project]:
+        return [self.DUMMY_PROJECT]
+
+    async def get_project(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+    ) -> Project:
+        return self.DUMMY_PROJECT
+
+    async def update_project(self, project: Project) -> None:
+        pass
+
+    async def delete_project(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+    ) -> None:
+        pass
+
+    #  project user
+
+    @overload
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: Literal[True],
+    ) -> list[ProjectUserWithInfo]:
+        ...
+
+    @overload
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: Literal[False] = ...,
+    ) -> list[ProjectUser]:
+        ...
+
+    async def list_project_users(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        with_user_info: bool = False,
+    ) -> list[ProjectUser] | list[ProjectUserWithInfo]:
+        return [self.DUMMY_PROJECT_USER]
+
+    @overload
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: Literal[True],
+    ) -> ProjectUserWithInfo:
+        ...
+
+    @overload
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: Literal[False] = ...,
+    ) -> ProjectUser:
+        ...
+
+    async def get_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        with_user_info: bool = False,
+    ) -> ProjectUser | ProjectUserWithInfo:
+        return self.DUMMY_PROJECT_USER
+
+    @overload
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: Literal[True],
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUserWithInfo:
+        ...
+
+    @overload
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: Literal[False] = ...,
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUser:
+        ...
+
+    async def create_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+        *,
+        with_user_info: bool = False,
+        role: ProjectUserRoleType | None = None,
+    ) -> ProjectUser | ProjectUserWithInfo:
+        return self.DUMMY_PROJECT_USER
+
+    async def update_project_user(self, project_user: ProjectUser) -> None:
+        pass
+
+    async def delete_project_user(
+        self,
+        project_name: str,
+        cluster_name: str,
+        org_name: str | None,
+        user_name: str,
+    ) -> None:
         pass
 
     async def add_debt(
