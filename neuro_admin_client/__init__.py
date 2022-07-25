@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, overload
+from typing import Any, Iterable, List, Tuple, Union, overload
 
 import aiohttp
 from multidict import CIMultiDict
@@ -38,6 +38,14 @@ def _to_query_bool(flag: bool) -> str:
     return str(flag).lower()
 
 
+GetUserRet = Union[
+    User,
+    Tuple[User, List[ClusterUser]],
+    Tuple[User, List[ProjectUser]],
+    Tuple[User, List[ClusterUser], List[ProjectUser]],
+]
+
+
 class AdminClientABC(abc.ABC):
     async def __aenter__(self) -> "AdminClientABC":
         return self
@@ -52,8 +60,40 @@ class AdminClientABC(abc.ABC):
     async def list_users(self) -> list[User]:
         ...
 
-    @abstractmethod
+    @overload
     async def get_user(self, name: str) -> User:
+        ...
+
+    @overload
+    async def get_user(
+        self, name: str, *, include_clusters: Literal[True]
+    ) -> tuple[User, list[ClusterUser]]:
+        ...
+
+    @overload
+    async def get_user(
+        self, name: str, *, include_projects: Literal[True]
+    ) -> tuple[User, list[ProjectUser]]:
+        ...
+
+    @overload
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_clusters: Literal[True],
+        include_projects: Literal[True],
+    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
+        ...
+
+    @abstractmethod
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_clusters: bool = False,
+        include_projects: bool = False,
+    ) -> GetUserRet:
         ...
 
     @abstractmethod
@@ -806,7 +846,7 @@ class AdminClientBase:
         method: str,
         path: str,
         json: dict[str, Any] | None = None,
-        params: Mapping[str, str] | None = None,
+        params: Mapping[str, str] | Iterable[tuple[str, str]] | None = None,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         pass
 
@@ -841,6 +881,17 @@ class AdminClientBase:
             cluster_name=payload["cluster_name"],
         )
 
+    def _parse_user_project_payload(
+        self, payload: dict[str, Any], user_name: str
+    ) -> ProjectUser:
+        return ProjectUser(
+            user_name=user_name,
+            role=ProjectUserRoleType(payload["role"]),
+            project_name=payload["project_name"],
+            cluster_name=payload["cluster_name"],
+            org_name=payload.get("org_name"),
+        )
+
     async def list_users(self) -> list[User]:
         async with self._request("GET", "users") as resp:
             resp.raise_for_status()
@@ -848,11 +899,67 @@ class AdminClientBase:
             users = [self._parse_user_payload(raw_user) for raw_user in users_raw]
         return users
 
+    @overload
     async def get_user(self, name: str) -> User:
-        async with self._request("GET", f"users/{name}") as resp:
+        ...
+
+    @overload
+    async def get_user(
+        self, name: str, *, include_clusters: Literal[True]
+    ) -> tuple[User, list[ClusterUser]]:
+        ...
+
+    @overload
+    async def get_user(
+        self, name: str, *, include_projects: Literal[True]
+    ) -> tuple[User, list[ProjectUser]]:
+        ...
+
+    @overload
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_clusters: Literal[True],
+        include_projects: Literal[True],
+    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
+        ...
+
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_clusters: bool = False,
+        include_projects: bool = False,
+    ) -> GetUserRet:
+        params = []
+        if include_clusters:
+            params.append(("include", "clusters"))
+        if include_projects:
+            params.append(("include", "projects"))
+        async with self._request("GET", f"users/{name}", params=params) as resp:
             resp.raise_for_status()
-            raw_user = await resp.json()
-            return self._parse_user_payload(raw_user)
+            payload = await resp.json()
+            user = self._parse_user_payload(payload)
+            clusters: list[ClusterUser] | None = None
+            projects: list[ProjectUser] | None = None
+            if include_clusters:
+                clusters = [
+                    self._parse_user_cluster_payload(user_cluster_raw, user.name)
+                    for user_cluster_raw in payload["clusters"]
+                ]
+            if include_projects:
+                projects = [
+                    self._parse_user_project_payload(user_cluster_raw, user.name)
+                    for user_cluster_raw in payload["projects"]
+                ]
+            if clusters is not None and projects is not None:
+                return user, clusters, projects
+            if projects is not None:
+                return user, projects
+            if clusters is not None:
+                return user, clusters
+            return user
 
     async def get_user_with_clusters(self, name: str) -> tuple[User, list[ClusterUser]]:
         async with self._request(
@@ -2429,8 +2536,46 @@ class AdminClientDummy(AdminClientABC):
     async def list_users(self) -> list[User]:
         return [self.DUMMY_USER]
 
+    @overload
     async def get_user(self, name: str) -> User:
-        return self.DUMMY_USER
+        ...
+
+    @overload
+    async def get_user(
+        self, name: str, *, include_clusters: Literal[True]
+    ) -> tuple[User, list[ClusterUser]]:
+        ...
+
+    @overload
+    async def get_user(
+        self, name: str, *, include_projects: Literal[True]
+    ) -> tuple[User, list[ProjectUser]]:
+        ...
+
+    @overload
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_clusters: Literal[True],
+        include_projects: Literal[True],
+    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
+        ...
+
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_clusters: bool = False,
+        include_projects: bool = False,
+    ) -> GetUserRet:
+        if include_clusters is None and include_projects is None:
+            return self.DUMMY_USER
+        if include_projects is None:
+            return self.DUMMY_USER, [self.DUMMY_CLUSTER_USER]
+        if include_clusters is None:
+            return self.DUMMY_USER, [self.DUMMY_PROJECT_USER]
+        return self.DUMMY_USER, [self.DUMMY_CLUSTER_USER], [self.DUMMY_PROJECT_USER]
 
     async def get_user_with_clusters(self, name: str) -> tuple[User, list[ClusterUser]]:
         return self.DUMMY_USER, [self.DUMMY_CLUSTER_USER]

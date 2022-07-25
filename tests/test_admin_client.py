@@ -169,6 +169,82 @@ class TestAdminClient:
             assert user == mock_admin_server.users[0]
             assert set(cluster_users) == set(mock_admin_server.cluster_users)
 
+    async def test_get_user_with_additional_info(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.users = [
+            User(
+                name="test1",
+                email="email",
+            ),
+        ]
+        mock_admin_server.clusters = [
+            Cluster(
+                name="cluster1",
+                default_credits=None,
+                default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
+            ),
+            Cluster(
+                name="cluster2",
+                default_credits=None,
+                default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
+            ),
+        ]
+        mock_admin_server.cluster_users = [
+            ClusterUser(
+                user_name="test1",
+                cluster_name="cluster1",
+                org_name=None,
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.USER,
+            ),
+            ClusterUser(
+                user_name="test1",
+                cluster_name="cluster2",
+                org_name=None,
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.ADMIN,
+            ),
+        ]
+        mock_admin_server.project_users = [
+            ProjectUser(
+                project_name="proj1",
+                user_name="test1",
+                cluster_name="cluster1",
+                org_name=None,
+                role=ProjectUserRoleType.WRITER,
+            ),
+            ProjectUser(
+                project_name="proj2",
+                user_name="test1",
+                cluster_name="cluster2",
+                org_name=None,
+                role=ProjectUserRoleType.MANAGER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            res1 = await client.get_user(name="test1")
+            assert res1 == mock_admin_server.users[0]
+            res2 = await client.get_user(name="test1", include_clusters=True)
+            assert res2[0] == mock_admin_server.users[0]
+            assert set(res2[1]) == set(mock_admin_server.cluster_users)
+
+            res3 = await client.get_user(name="test1", include_projects=True)
+            assert res3[0] == mock_admin_server.users[0]
+            assert set(res3[1]) == set(mock_admin_server.project_users)
+
+            res4 = await client.get_user(
+                name="test1", include_clusters=True, include_projects=True
+            )
+            assert res4[0] == mock_admin_server.users[0]
+            assert set(res4[1]) == set(mock_admin_server.cluster_users)
+            assert set(res4[2]) == set(mock_admin_server.project_users)
+
     async def test_create_org(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:
             await client.create_org(name="name")

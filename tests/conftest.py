@@ -84,6 +84,11 @@ class AdminServer:
         res["cluster_name"] = user.cluster_name
         return res
 
+    def _serialize_user_project(self, user: ProjectUser) -> dict[str, Any]:
+        res = self._serialize_project_user(user, False)
+        res.pop("user_name")
+        return res
+
     async def handle_user_post(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
@@ -113,6 +118,12 @@ class AdminServer:
                         self._serialize_user_cluster(cluster_user)
                         for cluster_user in self.cluster_users
                         if cluster_user.user_name == user_name
+                    ]
+                if "projects" in request.query.getall("include", []):
+                    payload["projects"] = [
+                        self._serialize_user_project(project_user)
+                        for project_user in self.project_users
+                        if project_user.user_name == user_name
                     ]
                 return aiohttp.web.json_response(payload)
         raise aiohttp.web.HTTPNotFound
