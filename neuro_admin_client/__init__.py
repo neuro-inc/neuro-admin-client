@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Iterable, List, Tuple, Union, overload
+from typing import Any, List, Tuple, Union, overload
 
 import aiohttp
 from multidict import CIMultiDict
@@ -845,8 +845,9 @@ class AdminClientBase:
         self,
         method: str,
         path: str,
+        *,
         json: dict[str, Any] | None = None,
-        params: Mapping[str, str] | Iterable[tuple[str, str]] | None = None,
+        params: Sequence[tuple[str, str]] | Mapping[str, str] | None = None,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         pass
 
@@ -2461,11 +2462,18 @@ class AdminClient(AdminClientBase, AdminClientABC):
 
     @asynccontextmanager
     async def _request(
-        self, method: str, path: str, **kwargs: Any
+        self,
+        method: str,
+        path: str,
+        *,
+        params: (Sequence[tuple[str, str]] | Mapping[str, str] | None) = None,
+        **kwargs: Any,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         assert self._client
         assert self._base_url
         url = self._base_url / path
+        if params:
+            url = url.with_query(params)
         async with self._client.request(method, url, **kwargs) as response:
             response.raise_for_status()
             yield response
