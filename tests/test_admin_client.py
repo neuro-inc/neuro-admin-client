@@ -15,6 +15,9 @@ from neuro_admin_client import (
     OrgCluster,
     OrgUser,
     OrgUserRoleType,
+    Project,
+    ProjectUser,
+    ProjectUserRoleType,
     Quota,
     User,
 )
@@ -165,6 +168,82 @@ class TestAdminClient:
             user, cluster_users = await client.get_user_with_clusters(name="test1")
             assert user == mock_admin_server.users[0]
             assert set(cluster_users) == set(mock_admin_server.cluster_users)
+
+    async def test_get_user_with_additional_info(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.users = [
+            User(
+                name="test1",
+                email="email",
+            ),
+        ]
+        mock_admin_server.clusters = [
+            Cluster(
+                name="cluster1",
+                default_credits=None,
+                default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
+            ),
+            Cluster(
+                name="cluster2",
+                default_credits=None,
+                default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
+            ),
+        ]
+        mock_admin_server.cluster_users = [
+            ClusterUser(
+                user_name="test1",
+                cluster_name="cluster1",
+                org_name=None,
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.USER,
+            ),
+            ClusterUser(
+                user_name="test1",
+                cluster_name="cluster2",
+                org_name=None,
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.ADMIN,
+            ),
+        ]
+        mock_admin_server.project_users = [
+            ProjectUser(
+                project_name="proj1",
+                user_name="test1",
+                cluster_name="cluster1",
+                org_name=None,
+                role=ProjectUserRoleType.WRITER,
+            ),
+            ProjectUser(
+                project_name="proj2",
+                user_name="test1",
+                cluster_name="cluster2",
+                org_name=None,
+                role=ProjectUserRoleType.MANAGER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            res1 = await client.get_user(name="test1")
+            assert res1 == mock_admin_server.users[0]
+            res2 = await client.get_user(name="test1", include_clusters=True)
+            assert res2[0] == mock_admin_server.users[0]
+            assert set(res2[1]) == set(mock_admin_server.cluster_users)
+
+            res3 = await client.get_user(name="test1", include_projects=True)
+            assert res3[0] == mock_admin_server.users[0]
+            assert set(res3[1]) == set(mock_admin_server.project_users)
+
+            res4 = await client.get_user(
+                name="test1", include_clusters=True, include_projects=True
+            )
+            assert res4[0] == mock_admin_server.users[0]
+            assert set(res4[1]) == set(mock_admin_server.cluster_users)
+            assert set(res4[2]) == set(mock_admin_server.project_users)
 
     async def test_create_org(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:
@@ -1439,3 +1518,312 @@ class TestAdminClient:
                 cluster_name="cluster", org_name="org", delta=Decimal(10)
             )
             assert org_cluster.balance.credits == Decimal(25)
+
+    async def test_create_project_minimal(self, mock_admin_server: AdminServer) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_project(
+                name="name", cluster_name="cluster", org_name=None
+            )
+
+        assert len(mock_admin_server.projects) == 1
+        project = mock_admin_server.projects[0]
+        assert project.name == "name"
+        assert project.cluster_name == "cluster"
+        assert project.org_name is None
+        assert not project.is_default
+        assert project.default_role == ProjectUserRoleType.WRITER
+
+    async def test_create_project_full(self, mock_admin_server: AdminServer) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_project(
+                name="name",
+                cluster_name="cluster",
+                org_name="org",
+                is_default=True,
+                default_role=ProjectUserRoleType.READER,
+            )
+
+        assert len(mock_admin_server.projects) == 1
+        project = mock_admin_server.projects[0]
+        assert project.name == "name"
+        assert project.cluster_name == "cluster"
+        assert project.org_name == "org"
+        assert project.is_default
+        assert project.default_role == ProjectUserRoleType.READER
+
+    async def test_update_project(self, mock_admin_server: AdminServer) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            project = await client.create_project(
+                name="name",
+                cluster_name="cluster",
+                org_name="org",
+            )
+            project = replace(
+                project, is_default=True, default_role=ProjectUserRoleType.READER
+            )
+            await client.update_project(project)
+
+        assert len(mock_admin_server.projects) == 1
+        project = mock_admin_server.projects[0]
+        assert project.name == "name"
+        assert project.cluster_name == "cluster"
+        assert project.org_name == "org"
+        assert project.is_default
+        assert project.default_role == ProjectUserRoleType.READER
+
+    async def test_list_projects(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.projects = [
+            Project(
+                name="name",
+                cluster_name="cluster",
+                org_name=None,
+            ),
+            Project(
+                name="name2",
+                cluster_name="cluster",
+                org_name="org",
+                is_default=True,
+                default_role=ProjectUserRoleType.READER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            projects = await client.list_projects(cluster_name="cluster", org_name=None)
+
+            assert len(projects) == 1
+            assert set(projects) == {mock_admin_server.projects[0]}
+
+            projects = await client.list_projects(
+                cluster_name="cluster", org_name="org"
+            )
+
+            assert len(projects) == 1
+            assert set(projects) == {mock_admin_server.projects[1]}
+
+    async def test_get_project(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.projects = [
+            Project(
+                name="name",
+                cluster_name="cluster",
+                org_name=None,
+            ),
+            Project(
+                name="name2",
+                cluster_name="cluster",
+                org_name="org",
+                is_default=True,
+                default_role=ProjectUserRoleType.READER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            project = await client.get_project(
+                project_name="name", cluster_name="cluster", org_name=None
+            )
+            assert project == mock_admin_server.projects[0]
+
+            project = await client.get_project(
+                project_name="name2", cluster_name="cluster", org_name="org"
+            )
+            assert project == mock_admin_server.projects[1]
+
+    async def test_delete_project(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.projects = [
+            Project(
+                name="name",
+                cluster_name="cluster",
+                org_name=None,
+            ),
+            Project(
+                name="name2",
+                cluster_name="cluster",
+                org_name="org",
+                is_default=True,
+                default_role=ProjectUserRoleType.READER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.delete_project(
+                project_name="name", cluster_name="cluster", org_name=None
+            )
+
+            with pytest.raises(ClientResponseError):
+                await client.get_project(
+                    project_name="name", cluster_name="cluster", org_name=None
+                )
+
+    async def test_create_project_user(self, mock_admin_server: AdminServer) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_user(name="test_user", email="email")
+            res_user_with_info = await client.create_project_user(
+                project_name="proj",
+                cluster_name="cluster",
+                org_name="org",
+                user_name="test_user",
+                role=ProjectUserRoleType.READER,
+                with_user_info=True,
+            )
+            res_user = await client.get_project_user(
+                project_name="proj",
+                cluster_name="cluster",
+                org_name="org",
+                user_name="test_user",
+            )
+
+        assert res_user.org_name == "org"
+        assert res_user.cluster_name == "cluster"
+        assert res_user.project_name == "proj"
+        assert res_user.user_name == "test_user"
+        assert res_user.role == ProjectUserRoleType.READER
+        assert res_user_with_info.user_info.email == "email"
+
+        assert mock_admin_server.project_users == [res_user]
+
+    async def test_update_project_user(self, mock_admin_server: AdminServer) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.create_user(name="test_user", email="email")
+            res_user = await client.create_project_user(
+                project_name="proj",
+                cluster_name="cluster",
+                org_name="org",
+                user_name="test_user",
+            )
+            res_user = replace(res_user, role=ProjectUserRoleType.MANAGER)
+            await client.update_project_user(res_user)
+            res_user = await client.get_project_user(
+                project_name="proj",
+                cluster_name="cluster",
+                org_name="org",
+                user_name="test_user",
+            )
+
+        assert res_user.role == ProjectUserRoleType.MANAGER
+
+        assert mock_admin_server.project_users == [res_user]
+
+    async def test_list_project_user(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.users = [
+            User(
+                name="test1",
+                email="email",
+            ),
+            User(
+                name="test2",
+                email="email",
+            ),
+        ]
+        mock_admin_server.project_users = [
+            ProjectUser(
+                project_name="proj",
+                cluster_name="cluster",
+                user_name="test1",
+                org_name="org",
+                role=ProjectUserRoleType.READER,
+            ),
+            ProjectUser(
+                project_name="proj",
+                cluster_name="cluster",
+                user_name="test2",
+                org_name=None,
+                role=ProjectUserRoleType.READER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            users = await client.list_project_users(
+                cluster_name="cluster", org_name="org", project_name="proj"
+            )
+
+            assert len(users) == 1
+            assert set(users) == {mock_admin_server.project_users[0]}
+
+            users = await client.list_project_users(
+                cluster_name="cluster", org_name=None, project_name="proj"
+            )
+
+            assert len(users) == 1
+            assert set(users) == {mock_admin_server.project_users[1]}
+
+    async def test_get_project_user(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.users = [
+            User(
+                name="test1",
+                email="email",
+            ),
+            User(
+                name="test2",
+                email="email",
+            ),
+        ]
+        mock_admin_server.project_users = [
+            ProjectUser(
+                project_name="proj",
+                cluster_name="cluster",
+                user_name="test1",
+                org_name="org",
+                role=ProjectUserRoleType.READER,
+            ),
+            ProjectUser(
+                project_name="proj",
+                cluster_name="cluster",
+                user_name="test2",
+                org_name=None,
+                role=ProjectUserRoleType.READER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org_user = await client.get_project_user(
+                cluster_name="cluster",
+                org_name="org",
+                project_name="proj",
+                user_name="test1",
+            )
+            assert org_user == mock_admin_server.project_users[0]
+
+            org_user = await client.get_project_user(
+                cluster_name="cluster",
+                org_name=None,
+                project_name="proj",
+                user_name="test2",
+            )
+            assert org_user == mock_admin_server.project_users[1]
+
+    async def test_delete_project_user(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.users = [
+            User(
+                name="test1",
+                email="email",
+            ),
+            User(
+                name="test2",
+                email="email",
+            ),
+        ]
+        mock_admin_server.project_users = [
+            ProjectUser(
+                project_name="proj",
+                cluster_name="cluster",
+                user_name="test1",
+                org_name="org",
+                role=ProjectUserRoleType.READER,
+            ),
+            ProjectUser(
+                project_name="proj",
+                cluster_name="cluster",
+                user_name="test2",
+                org_name=None,
+                role=ProjectUserRoleType.READER,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.delete_project_user(
+                cluster_name="cluster",
+                org_name="org",
+                project_name="proj",
+                user_name="test1",
+            )
+            assert len(mock_admin_server.project_users) == 1
+            assert mock_admin_server.project_users[0].user_name == "test2"

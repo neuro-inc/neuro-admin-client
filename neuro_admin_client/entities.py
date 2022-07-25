@@ -150,3 +150,50 @@ class ClusterUser:
 @dataclass(frozen=True)
 class ClusterUserWithInfo(ClusterUser):
     user_info: UserInfo
+
+
+@unique
+class ProjectUserRoleType(str, Enum):
+    ADMIN = "admin"
+    MANAGER = "manager"
+    WRITER = "writer"
+    READER = "reader"
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.__str__().__repr__()
+
+
+@dataclass(frozen=True)
+class Project:
+    name: str
+    cluster_name: str
+    org_name: Optional[str]
+    is_default: bool = False  # Enables auto add new tenant users to thi project
+    default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER
+
+
+@dataclass(frozen=True)
+class ProjectUser:
+    user_name: str
+    cluster_name: str
+    org_name: Optional[str]
+    project_name: str
+    role: ProjectUserRoleType
+
+    def add_info(self, user_info: UserInfo) -> "ProjectUserWithInfo":
+        return ProjectUserWithInfo(
+            project_name=self.project_name,
+            cluster_name=self.cluster_name,
+            user_name=self.user_name,
+            org_name=self.org_name,
+            user_info=user_info,
+            role=self.role,
+        )
+
+
+@dataclass(frozen=True)
+class ProjectUserWithInfo(ProjectUser):
+    user_info: UserInfo

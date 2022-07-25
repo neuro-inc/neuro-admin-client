@@ -22,6 +22,9 @@ from neuro_admin_client import (
     OrgCluster,
     OrgUser,
     OrgUserRoleType,
+    Project,
+    ProjectUser,
+    ProjectUserRoleType,
     Quota,
     User,
 )
@@ -56,6 +59,8 @@ class AdminServer:
     org_clusters: list[OrgCluster] = field(default_factory=list)
     org_users: list[OrgUser] = field(default_factory=list)
     debts: list[Debt] = field(default_factory=list)
+    projects: list[Project] = field(default_factory=list)
+    project_users: list[ProjectUser] = field(default_factory=list)
 
     last_skip_auto_add_to_clusters: bool = False
 
@@ -77,6 +82,11 @@ class AdminServer:
         res = self._serialize_cluster_user(user, False)
         res.pop("user_name")
         res["cluster_name"] = user.cluster_name
+        return res
+
+    def _serialize_user_project(self, user: ProjectUser) -> dict[str, Any]:
+        res = self._serialize_project_user(user, False)
+        res.pop("user_name")
         return res
 
     async def handle_user_post(
@@ -108,6 +118,12 @@ class AdminServer:
                         self._serialize_user_cluster(cluster_user)
                         for cluster_user in self.cluster_users
                         if cluster_user.user_name == user_name
+                    ]
+                if "projects" in request.query.getall("include", []):
+                    payload["projects"] = [
+                        self._serialize_user_project(project_user)
+                        for project_user in self.project_users
+                        if project_user.user_name == user_name
                     ]
                 return aiohttp.web.json_response(payload)
         raise aiohttp.web.HTTPNotFound
@@ -871,6 +887,232 @@ class AdminServer:
                 )
         raise aiohttp.web.HTTPNotFound
 
+    def _serialize_project(self, project: Project) -> dict[str, Any]:
+        return {
+            "name": project.name,
+            "cluster_name": project.cluster_name,
+            "org_name": project.org_name,
+            "is_default": project.is_default,
+            "default_role": project.default_role.value,
+        }
+
+    async def handle_project_post(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+
+        payload = await request.json()
+        new_project = Project(
+            name=payload["name"],
+            cluster_name=cluster_name,
+            org_name=org_name,
+            is_default=payload.get("is_default", False),
+            default_role=ProjectUserRoleType(
+                payload.get("default_role", ProjectUserRoleType.WRITER.value)
+            ),
+        )
+        self.projects.append(new_project)
+        return aiohttp.web.json_response(self._serialize_project(new_project))
+
+    async def handle_project_put(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+        payload = await request.json()
+
+        changed_project = Project(
+            name=project_name,
+            cluster_name=cluster_name,
+            org_name=org_name,
+            is_default=payload["is_default"],
+            default_role=ProjectUserRoleType(payload["default_role"]),
+        )
+
+        self.projects = [
+            it
+            for it in self.projects
+            if it.name != project_name
+            or it.cluster_name != cluster_name
+            or it.org_name != org_name
+        ]
+        self.projects.append(changed_project)
+        return aiohttp.web.json_response(self._serialize_project(changed_project))
+
+    async def handle_project_get(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+        for project in self.projects:
+            if (
+                project.name == project_name
+                and project.cluster_name == cluster_name
+                and project.org_name == org_name
+            ):
+                return aiohttp.web.json_response(self._serialize_project(project))
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_project_list(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        resp = [
+            self._serialize_project(project)
+            for project in self.projects
+            if project.cluster_name == cluster_name and project.org_name == org_name
+        ]
+        return aiohttp.web.json_response(resp)
+
+    async def handle_project_delete(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+
+        for idx, project in enumerate(self.projects):
+            if (
+                project.name == project_name
+                and project.cluster_name == cluster_name
+                and project.org_name == org_name
+            ):
+                del self.projects[idx]
+                return aiohttp.web.json_response(self._serialize_project(project))
+        raise aiohttp.web.HTTPNotFound
+
+    def _serialize_project_user(
+        self, project_user: ProjectUser, with_info: bool
+    ) -> dict[str, Any]:
+        res: dict[str, Any] = {
+            "user_name": project_user.user_name,
+            "role": project_user.role.value,
+            "org_name": project_user.org_name,
+            "cluster_name": project_user.cluster_name,
+            "project_name": project_user.project_name,
+        }
+        if with_info:
+            user = next(
+                user for user in self.users if user.name == project_user.user_name
+            )
+            res["user_info"] = self._serialize_user(user)
+            res["user_info"].pop("name")
+        return res
+
+    async def handle_project_user_post(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+
+        payload = await request.json()
+        new_project_user = ProjectUser(
+            org_name=org_name,
+            cluster_name=cluster_name,
+            project_name=project_name,
+            user_name=payload["user_name"],
+            role=ProjectUserRoleType(payload.get("role", "writer")),
+        )
+        self.project_users.append(new_project_user)
+        return aiohttp.web.json_response(
+            self._serialize_project_user(
+                new_project_user,
+                _parse_bool(request.query.get("with_user_info", "false")),
+            )
+        )
+
+    async def handle_project_user_put(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+        user_name = request.match_info["uname"]
+        payload = await request.json()
+        project_user = ProjectUser(
+            org_name=org_name,
+            cluster_name=cluster_name,
+            project_name=project_name,
+            user_name=user_name,
+            role=ProjectUserRoleType(payload["role"]),
+        )
+        self.project_users = [
+            it
+            for it in self.project_users
+            if it.org_name != org_name
+            or it.user_name != user_name
+            or it.cluster_name != cluster_name
+        ]
+        self.project_users.append(project_user)
+        return aiohttp.web.json_response(
+            self._serialize_project_user(
+                project_user,
+                _parse_bool(request.query.get("with_user_info", "false")),
+            )
+        )
+
+    async def handle_project_user_get(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+        user_name = request.match_info["uname"]
+        for project_user in self.project_users:
+            if (
+                project_user.org_name == org_name
+                and project_user.user_name == user_name
+                and project_user.cluster_name == cluster_name
+                and project_user.project_name == project_name
+            ):
+                return aiohttp.web.json_response(
+                    self._serialize_project_user(
+                        project_user,
+                        _parse_bool(request.query.get("with_user_info", "false")),
+                    )
+                )
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_project_user_delete(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+        user_name = request.match_info["uname"]
+        for idx, project_user in enumerate(self.project_users):
+            if (
+                project_user.org_name == org_name
+                and project_user.user_name == user_name
+                and project_user.cluster_name == cluster_name
+                and project_user.project_name == project_name
+            ):
+                del self.project_users[idx]
+                raise aiohttp.web.HTTPNoContent
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_project_user_list(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info.get("oname")
+        project_name = request.match_info["pname"]
+        resp = [
+            self._serialize_project_user(
+                project_user, _parse_bool(request.query.get("with_user_info", "false"))
+            )
+            for project_user in self.project_users
+            if project_user.org_name == org_name
+            and project_user.cluster_name == cluster_name
+            and project_user.project_name == project_name
+        ]
+        return aiohttp.web.json_response(resp)
+
 
 @pytest.fixture
 async def mock_admin_server(
@@ -1047,6 +1289,88 @@ async def mock_admin_server(
                 aiohttp.web.patch(
                     "/api/v1/clusters/{cname}/orgs/{oname}/quota",
                     admin_server.handle_org_cluster_patch_quota,
+                ),
+                # projects
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/projects",
+                    admin_server.handle_project_post,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects",
+                    admin_server.handle_project_post,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/projects",
+                    admin_server.handle_project_list,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects",
+                    admin_server.handle_project_list,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/projects/{pname}",
+                    admin_server.handle_project_get,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}",
+                    admin_server.handle_project_get,
+                ),
+                aiohttp.web.put(
+                    "/api/v1/clusters/{cname}/projects/{pname}",
+                    admin_server.handle_project_put,
+                ),
+                aiohttp.web.put(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}",
+                    admin_server.handle_project_put,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/clusters/{cname}/projects/{pname}",
+                    admin_server.handle_project_delete,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}",
+                    admin_server.handle_project_delete,
+                ),
+                # project users
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/projects/{pname}/users",
+                    admin_server.handle_project_user_post,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}/users",
+                    admin_server.handle_project_user_post,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/projects/{pname}/users",
+                    admin_server.handle_project_user_list,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}/users",
+                    admin_server.handle_project_user_list,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/projects/{pname}/users/{uname}",
+                    admin_server.handle_project_user_get,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}/users/{uname}",
+                    admin_server.handle_project_user_get,
+                ),
+                aiohttp.web.put(
+                    "/api/v1/clusters/{cname}/projects/{pname}/users/{uname}",
+                    admin_server.handle_project_user_put,
+                ),
+                aiohttp.web.put(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}/users/{uname}",
+                    admin_server.handle_project_user_put,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/clusters/{cname}/projects/{pname}/users/{uname}",
+                    admin_server.handle_project_user_delete,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}/users/{uname}",
+                    admin_server.handle_project_user_delete,
                 ),
             )
         )
