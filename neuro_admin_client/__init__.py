@@ -2061,7 +2061,7 @@ class AdminClientBase:
             cluster_name=payload["cluster_name"],
             org_name=payload["org_name"],
             is_default=payload["is_default"],
-            default_role=payload["default_role"],
+            default_role=ProjectUserRoleType(payload["default_role"]),
         )
 
     async def create_project(
@@ -2133,7 +2133,7 @@ class AdminClientBase:
         if project.org_name:
             url = f"clusters/{project.cluster_name}/orgs/{project.org_name}/projects/{project.name}"
         else:
-            url = f"clusters/{project.cluster_name}/projects{project.name}"
+            url = f"clusters/{project.cluster_name}/projects/{project.name}"
 
         async with self._request(
             "PUT",
