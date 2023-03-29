@@ -78,6 +78,11 @@ class AdminServer:
             "created_at": user.created_at.isoformat() if user.created_at else None,
         }
 
+    def _serialize_user_org(self, user: OrgUser) -> dict[str, Any]:
+        res = self._serialize_org_user(user, False)
+        res.pop("user_name")
+        return res
+
     def _serialize_user_cluster(self, user: ClusterUser) -> dict[str, Any]:
         res = self._serialize_cluster_user(user, False)
         res.pop("user_name")
@@ -113,6 +118,12 @@ class AdminServer:
         for user in self.users:
             if user.name == user_name:
                 payload = self._serialize_user(user)
+                if "orgs" in request.query.getall("include", []):
+                    payload["orgs"] = [
+                        self._serialize_user_org(org_user)
+                        for org_user in self.org_users
+                        if org_user.user_name == user_name
+                    ]
                 if "clusters" in request.query.getall("include", []):
                     payload["clusters"] = [
                         self._serialize_user_cluster(cluster_user)

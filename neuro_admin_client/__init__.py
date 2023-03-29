@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import abc
 from abc import abstractmethod
 from collections.abc import AsyncIterator, Mapping, Sequence
@@ -38,11 +39,20 @@ def _to_query_bool(flag: bool) -> str:
     return str(flag).lower()
 
 
+@dataclass(frozen=True)
+class GetUserResponse:
+    user: User
+    orgs: List[OrgUser] = field(default_factory=list)
+    clusters: List[ClusterUser] = field(default_factory=list)
+    projects: List[ProjectUser] = field(default_factory=list)
+
+
 GetUserRet = Union[
     User,
     Tuple[User, List[ClusterUser]],
     Tuple[User, List[ProjectUser]],
     Tuple[User, List[ClusterUser], List[ProjectUser]],
+    GetUserResponse,
 ]
 
 
@@ -77,13 +87,10 @@ class AdminClientABC(abc.ABC):
         ...
 
     @overload
-    async def get_user(
-        self,
-        name: str,
-        *,
-        include_clusters: Literal[True],
-        include_projects: Literal[True],
-    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
+    async def get_user(self, name: str, *, include_orgs: Literal[True],
+        include_clusters: bool = False,
+        include_projects: bool = False,
+                       ) -> GetUserResponse:
         ...
 
     @abstractmethod
@@ -91,6 +98,7 @@ class AdminClientABC(abc.ABC):
         self,
         name: str,
         *,
+        include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
     ) -> GetUserRet:
@@ -870,6 +878,15 @@ class AdminClientBase:
             created_at=datetime.fromisoformat(created_at) if created_at else None,
         )
 
+    def _parse_user_org_payload(
+        self, payload: dict[str, Any], user_name: str
+    ) -> OrgUser:
+        return OrgUser(
+            user_name=user_name,
+            role=OrgUserRoleType(payload["role"]),
+            org_name=payload["org_name"],
+        )
+
     def _parse_user_cluster_payload(
         self, payload: dict[str, Any], user_name: str
     ) -> ClusterUser:
@@ -926,14 +943,24 @@ class AdminClientBase:
     ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
         ...
 
+    @overload
+    async def get_user(self, name: str, *, include_orgs: Literal[True],
+        include_clusters: bool = False,
+        include_projects: bool = False,
+                       ) -> GetUserResponse:
+        ...
+
     async def get_user(
         self,
         name: str,
         *,
+        include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
     ) -> GetUserRet:
         params = []
+        if include_orgs:
+            params.append(("include", "orgs"))
         if include_clusters:
             params.append(("include", "clusters"))
         if include_projects:
@@ -942,8 +969,14 @@ class AdminClientBase:
             resp.raise_for_status()
             payload = await resp.json()
             user = self._parse_user_payload(payload)
+            orgs: list[OrgUser] | None = None
             clusters: list[ClusterUser] | None = None
             projects: list[ProjectUser] | None = None
+            if include_orgs:
+                orgs = [
+                    self._parse_user_org_payload(org_user_raw, user.name)
+                    for org_user_raw in payload["orgs"]
+                ]
             if include_clusters:
                 clusters = [
                     self._parse_user_cluster_payload(user_cluster_raw, user.name)
@@ -954,6 +987,13 @@ class AdminClientBase:
                     self._parse_user_project_payload(user_cluster_raw, user.name)
                     for user_cluster_raw in payload["projects"]
                 ]
+            if include_orgs:
+                return GetUserResponse(
+                    user=user,
+                    orgs=orgs or [],
+                    clusters=clusters or [],
+                    projects=projects or [],
+                )
             if clusters is not None and projects is not None:
                 return user, clusters, projects
             if projects is not None:
