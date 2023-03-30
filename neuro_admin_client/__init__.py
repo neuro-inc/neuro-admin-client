@@ -240,6 +240,7 @@ class AdminClientABC(abc.ABC):
     ) -> ClusterUser:
         ...
 
+    @abstractmethod
     async def create_cluster_user(
         self,
         cluster_name: str,
@@ -2610,13 +2611,28 @@ class AdminClientDummy(AdminClientABC):
     ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
         ...
 
+    @overload
+    async def get_user(self, name: str, *, include_orgs: Literal[True],
+        include_clusters: bool = False,
+        include_projects: bool = False,
+                       ) -> GetUserResponse:
+        ...
+
     async def get_user(
         self,
         name: str,
         *,
+        include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
     ) -> GetUserRet:
+        if include_orgs:
+            return GetUserResponse(
+                user=self.DUMMY_USER,
+                orgs=[self.DUMMY_ORG_USER],
+                clusters=[self.DUMMY_CLUSTER_USER],
+                projects=[self.DUMMY_PROJECT_USER],
+            )
         if include_clusters is None and include_projects is None:
             return self.DUMMY_USER
         if include_projects is None:
@@ -2666,7 +2682,7 @@ class AdminClientDummy(AdminClientABC):
         pass
 
     async def delete_cluster(self, name: str) -> Cluster:
-        pass
+        raise NotImplementedError()
 
     @overload
     async def list_cluster_users(
@@ -3073,7 +3089,7 @@ class AdminClientDummy(AdminClientABC):
         return self.DUMMY_ORG
 
     async def delete_org(self, name: str) -> Org:
-        pass
+        raise NotImplementedError()
 
     #  org user
 
