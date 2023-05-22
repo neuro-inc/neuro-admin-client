@@ -1,9 +1,11 @@
 import datetime
+import typing as t
 from dataclasses import replace
 from decimal import Decimal
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 import pytest
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientResponse
 
 from neuro_admin_client import (
     AdminClient,
@@ -601,6 +603,60 @@ class TestAdminClient:
 
         assert len(cluster_users) == 2
         assert set(cluster_users) == set(mock_admin_server.cluster_users)
+
+    async def test_list_clusters_user_can_only_get_usernames(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.users = [
+            User(
+                name="test1",
+                email="email",
+            ),
+            User(
+                name="test2",
+                email="email",
+            ),
+        ]
+        mock_admin_server.clusters = [
+            Cluster(
+                name="cluster",
+                default_credits=None,
+                default_quota=Quota(),
+                default_role=ClusterUserRoleType.USER,
+            ),
+        ]
+        mock_admin_server.cluster_users = [
+            ClusterUser(
+                user_name="test1",
+                cluster_name="cluster",
+                org_name=None,
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.USER,
+            ),
+            ClusterUser(
+                user_name="test2",
+                cluster_name="cluster",
+                org_name=None,
+                balance=Balance(),
+                quota=Quota(),
+                role=ClusterUserRoleType.ADMIN,
+            ),
+        ]
+
+        class PatchedAdminClient(AdminClient):
+            @asynccontextmanager
+            async def _request(self, *args, **kwargs) -> t.Any:  # type: ignore
+                kwargs["params"]["only_usernames"] = "true"
+                async with AdminClient._request(self, *args, **kwargs) as resp:
+                    yield resp
+
+        async with PatchedAdminClient(base_url=mock_admin_server.url) as client:
+            cluster_users = await client.list_cluster_users("cluster")
+
+        expected = [replace(u, role=None) for u in mock_admin_server.cluster_users]
+        assert len(cluster_users) == 2
+        assert set(cluster_users) == set(expected)
 
     async def test_list_clusters_user_with_org(
         self, mock_admin_server: AdminServer

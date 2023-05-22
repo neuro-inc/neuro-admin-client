@@ -289,17 +289,23 @@ class AdminServer:
         raise aiohttp.web.HTTPNotFound
 
     def _serialize_cluster_user(
-        self, cluster_user: ClusterUser, with_info: bool
+        self,
+        cluster_user: ClusterUser,
+        with_info: bool,
+        only_usernames: bool = False,
     ) -> dict[str, Any]:
+        if only_usernames:
+            return {"user_name": cluster_user.user_name}
         res: dict[str, Any] = {
             "user_name": cluster_user.user_name,
-            "role": cluster_user.role.value,
             "org_name": cluster_user.org_name,
             "quota": {},
             "balance": {
                 "spent_credits": str(cluster_user.balance.spent_credits),
             },
         }
+        if cluster_user.role:
+            res["role"] = cluster_user.role.value
         if cluster_user.quota.total_running_jobs is not None:
             res["quota"]["total_running_jobs"] = cluster_user.quota.total_running_jobs
         if cluster_user.balance.credits is not None:
@@ -544,7 +550,9 @@ class AdminServer:
         org_name = request.match_info.get("oname")
         resp = [
             self._serialize_cluster_user(
-                cluster_user, _parse_bool(request.query.get("with_user_info", "false"))
+                cluster_user,
+                _parse_bool(request.query.get("with_user_info", "false")),
+                _parse_bool(request.query.get("only_usernames", "false")),
             )
             for cluster_user in self.cluster_users
             if cluster_user.cluster_name == cluster_name
