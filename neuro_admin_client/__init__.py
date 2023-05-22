@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import abc
 from abc import abstractmethod
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, List, Tuple, Union, overload
@@ -42,9 +42,9 @@ def _to_query_bool(flag: bool) -> str:
 @dataclass(frozen=True)
 class GetUserResponse:
     user: User
-    orgs: List[OrgUser] = field(default_factory=list)
-    clusters: List[ClusterUser] = field(default_factory=list)
-    projects: List[ProjectUser] = field(default_factory=list)
+    orgs: list[OrgUser] = field(default_factory=list)
+    clusters: list[ClusterUser] = field(default_factory=list)
+    projects: list[ProjectUser] = field(default_factory=list)
 
 
 GetUserRet = Union[
@@ -87,10 +87,14 @@ class AdminClientABC(abc.ABC):
         ...
 
     @overload
-    async def get_user(self, name: str, *, include_orgs: Literal[True],
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_orgs: Literal[True],
         include_clusters: bool = False,
         include_projects: bool = False,
-                       ) -> GetUserResponse:
+    ) -> GetUserResponse:
         ...
 
     @abstractmethod
@@ -945,10 +949,14 @@ class AdminClientBase:
         ...
 
     @overload
-    async def get_user(self, name: str, *, include_orgs: Literal[True],
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_orgs: Literal[True],
         include_clusters: bool = False,
         include_projects: bool = False,
-                       ) -> GetUserResponse:
+    ) -> GetUserResponse:
         ...
 
     async def get_user(
@@ -2614,10 +2622,14 @@ class AdminClientDummy(AdminClientABC):
         ...
 
     @overload
-    async def get_user(self, name: str, *, include_orgs: Literal[True],
+    async def get_user(
+        self,
+        name: str,
+        *,
+        include_orgs: Literal[True],
         include_clusters: bool = False,
         include_projects: bool = False,
-                       ) -> GetUserResponse:
+    ) -> GetUserResponse:
         ...
 
     async def get_user(

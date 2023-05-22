@@ -1454,4 +1454,4 @@ class ApiRunner:
 
     @property
     def closed(self) -> bool:
-        return not bool(self._task)
+        return not self._task

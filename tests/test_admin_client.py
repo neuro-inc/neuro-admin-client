@@ -1,19 +1,19 @@
 import datetime
 import typing as t
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from decimal import Decimal
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 import pytest
-from aiohttp import ClientResponseError, ClientResponse
+from aiohttp import ClientResponseError
 
 from neuro_admin_client import (
     AdminClient,
     Balance,
-    GetUserResponse,
     Cluster,
     ClusterUser,
     ClusterUserRoleType,
+    GetUserResponse,
     Org,
     OrgCluster,
     OrgUser,
@@ -186,8 +186,8 @@ class TestAdminClient:
                 user_name="test1",
                 org_name="org1",
                 role=OrgUserRoleType.ADMIN,
-                )
-            ]
+            )
+        ]
         mock_admin_server.clusters = [
             Cluster(
                 name="cluster1",
@@ -255,13 +255,11 @@ class TestAdminClient:
             assert set(res4[1]) == set(mock_admin_server.cluster_users)
             assert set(res4[2]) == set(mock_admin_server.project_users)
 
-            res5 = await client.get_user(
-                name="test1", include_orgs=True
-            )
+            res5 = await client.get_user(name="test1", include_orgs=True)
             assert res5 == GetUserResponse(
                 user=mock_admin_server.users[0],
                 orgs=mock_admin_server.org_users,
-                )
+            )
 
     async def test_create_org(self, mock_admin_server: AdminServer) -> None:
         async with AdminClient(base_url=mock_admin_server.url) as client:
@@ -458,7 +456,6 @@ class TestAdminClient:
         ]
 
         async with AdminClient(base_url=mock_admin_server.url) as client:
-
             cluster = await client.delete_cluster(name="name")
             assert cluster.name == "name"
 
