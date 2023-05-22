@@ -1149,9 +1149,10 @@ class AdminClientBase:
     def _parse_cluster_user(
         self, cluster_name: str, payload: dict[str, Any]
     ) -> ClusterUser | ClusterUserWithInfo:
+        role = ClusterUserRoleType(payload["role"]) if "role" in payload else None
         cluster_user = ClusterUser(
             user_name=payload["user_name"],
-            role=ClusterUserRoleType(payload["role"]),
+            role=role,
             quota=self._parse_quota(payload.get("quota")),
             balance=self._parse_balance(payload.get("balance")),
             org_name=payload.get("org_name"),
@@ -1329,6 +1330,7 @@ class AdminClientBase:
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: bool = False
     ) -> ClusterUser | ClusterUserWithInfo:
+        assert cluster_user.role
         payload: dict[str, Any] = {
             "user_name": cluster_user.user_name,
             "role": cluster_user.role.value,

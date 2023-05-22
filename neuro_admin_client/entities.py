@@ -130,7 +130,7 @@ class OrgCluster:
 class ClusterUser:
     cluster_name: str
     user_name: str
-    role: ClusterUserRoleType
+    role: Optional[ClusterUserRoleType]
     quota: Quota
     balance: Balance
     org_name: Optional[str]
