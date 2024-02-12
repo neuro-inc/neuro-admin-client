@@ -57,7 +57,7 @@ GetUserRet = Union[
 
 
 class AdminClientABC(abc.ABC):
-    async def __aenter__(self) -> "AdminClientABC":
+    async def __aenter__(self) -> AdminClientABC:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -2476,7 +2476,7 @@ class AdminClient(AdminClientBase, AdminClientABC):
         self._trace_configs = trace_configs
         self._client: aiohttp.ClientSession | None = None
 
-    async def __aenter__(self) -> "AdminClient":
+    async def __aenter__(self) -> AdminClient:
         self._init()
         return self
 
@@ -2583,7 +2583,7 @@ class AdminClientDummy(AdminClientABC):
         user_info=UserInfo(email="email@examle.com"),
     )
 
-    async def __aenter__(self) -> "AdminClientDummy":
+    async def __aenter__(self) -> AdminClientDummy:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
