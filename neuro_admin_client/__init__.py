@@ -401,6 +401,16 @@ class AdminClientABC(abc.ABC):
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo: ...
 
+    @abstractmethod
+    async def charge_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+        amount: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> OrgCluster: ...
+
     @overload
     async def charge_cluster_user(
         self,
@@ -762,9 +772,10 @@ class AdminClientABC(abc.ABC):
     async def add_debt(
         self,
         cluster_name: str,
-        username: str,
         credits: Decimal,
         idempotency_key: str,
+        org_name: str | None = None,
+        user_name: str | None = None,
     ) -> None: ...
 
 
@@ -1513,6 +1524,29 @@ class AdminClientBase:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_cluster_user(cluster_name, raw_user)
+
+    async def charge_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+        amount: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> OrgCluster:
+        payload = {"spending": str(amount)}
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        url = f"clusters/{cluster_name}/orgs/{org_name}/spending"
+        async with self._request(
+            "POST",
+            url,
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_user = await resp.json()
+            return self._parse_org_cluster(cluster_name, raw_user)
 
     @overload
     async def charge_cluster_user(
@@ -2308,11 +2342,16 @@ class AdminClientBase:
     async def add_debt(
         self,
         cluster_name: str,
-        username: str,
         credits: Decimal,
         idempotency_key: str,
+        org_name: str | None = None,
+        user_name: str | None = None,
     ) -> None:
-        payload = {"user_name": username, "credits": str(credits)}
+        payload = {"credits": str(credits)}
+        if org_name:
+            payload["org_name"] = org_name
+        if user_name:
+            payload["user_name"] = user_name
         async with self._request(
             "POST",
             f"clusters/{cluster_name}/debts",
@@ -2830,6 +2869,16 @@ class AdminClientDummy(AdminClientABC):
     ) -> ClusterUser | ClusterUserWithInfo:
         return self.DUMMY_CLUSTER_USER
 
+    async def charge_org_cluster(
+        self,
+        cluster_name: str,
+        org_name: str,
+        amount: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> OrgCluster:
+        return self.DUMMY_ORG_CLUSTER
+
     @overload
     async def charge_cluster_user(
         self,
@@ -3188,8 +3237,9 @@ class AdminClientDummy(AdminClientABC):
     async def add_debt(
         self,
         cluster_name: str,
-        username: str,
         credits: Decimal,
         idempotency_key: str,
+        org_name: str | None = None,
+        user_name: str | None = None,
     ) -> None:
         pass

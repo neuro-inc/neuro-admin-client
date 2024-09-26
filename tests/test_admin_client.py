@@ -1272,6 +1272,25 @@ class TestAdminClient:
             )
             assert cluster_user.balance.credits == Decimal(25)
 
+    async def test_org_cluster_add_spending(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        mock_admin_server.org_clusters = [
+            OrgCluster(
+                cluster_name="cluster",
+                org_name="org",
+                balance=Balance(credits=Decimal(10)),
+                quota=Quota(),
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org_cluster = await client.charge_org_cluster(
+                cluster_name="cluster", org_name="org", amount=Decimal(15)
+            )
+            assert org_cluster.balance.credits == Decimal(-5)
+            assert org_cluster.balance.spent_credits == Decimal(15)
+
     async def test_cluster_user_add_spending(
         self, mock_admin_server: AdminServer
     ) -> None:
@@ -1463,13 +1482,15 @@ class TestAdminClient:
         async with AdminClient(base_url=mock_admin_server.url) as client:
             await client.add_debt(
                 cluster_name="cluster",
-                username="test1",
+                org_name="org",
+                user_name="user",
                 credits=Decimal(15),
                 idempotency_key="test",
             )
 
             assert mock_admin_server.debts[0].cluster_name == "cluster"
-            assert mock_admin_server.debts[0].user_name == "test1"
+            assert mock_admin_server.debts[0].org_name == "org"
+            assert mock_admin_server.debts[0].user_name == "user"
             assert mock_admin_server.debts[0].credits == Decimal(15)
 
     async def test_patch_org_cluster_defaults(
