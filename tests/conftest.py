@@ -39,7 +39,8 @@ class ApiAddress:
 @dataclass(frozen=True)
 class Debt:
     cluster_name: str
-    user_name: str
+    org_name: str | None
+    user_name: str | None
     credits: Decimal
 
 
@@ -462,6 +463,32 @@ class AdminServer:
                 )
         raise aiohttp.web.HTTPNotFound
 
+    async def handle_org_cluster_add_spending(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org_cluster in enumerate(self.org_clusters):
+            if (
+                org_cluster.cluster_name == cluster_name
+                and org_cluster.org_name == org_name
+            ):
+                balance = org_cluster.balance
+                spending = Decimal(payload["spending"])
+                balance = replace(
+                    balance, spent_credits=balance.spent_credits + spending
+                )
+                if balance.credits:
+                    balance = replace(balance, credits=balance.credits - spending)
+                org_cluster = replace(org_cluster, balance=balance)
+                self.org_clusters[index] = org_cluster
+                return aiohttp.web.json_response(
+                    self._serialize_org_cluster(org_cluster)
+                )
+        raise aiohttp.web.HTTPNotFound
+
     async def handle_cluster_user_add_spending(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
@@ -501,7 +528,8 @@ class AdminServer:
         self.debts.append(
             Debt(
                 cluster_name=cluster_name,
-                user_name=payload["user_name"],
+                org_name=payload.get("org_name"),
+                user_name=payload.get("user_name"),
                 credits=Decimal(payload["credits"]),
             )
         )
@@ -1266,6 +1294,10 @@ async def mock_admin_server(
                 aiohttp.web.delete(
                     "/api/v1/clusters/{cname}/orgs/{oname}",
                     admin_server.handle_org_cluster_delete,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/orgs/{oname}/spending",
+                    admin_server.handle_org_cluster_add_spending,
                 ),
                 # org user endpoints:
                 aiohttp.web.get(
