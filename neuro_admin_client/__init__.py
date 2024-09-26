@@ -57,7 +57,7 @@ GetUserRet = Union[
 
 
 class AdminClientABC(abc.ABC):
-    async def __aenter__(self) -> "AdminClientABC":
+    async def __aenter__(self) -> AdminClientABC:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -67,24 +67,20 @@ class AdminClientABC(abc.ABC):
         pass
 
     @abstractmethod
-    async def list_users(self) -> list[User]:
-        ...
+    async def list_users(self) -> list[User]: ...
 
     @overload
-    async def get_user(self, name: str) -> User:
-        ...
+    async def get_user(self, name: str) -> User: ...
 
     @overload
     async def get_user(
         self, name: str, *, include_clusters: Literal[True]
-    ) -> tuple[User, list[ClusterUser]]:
-        ...
+    ) -> tuple[User, list[ClusterUser]]: ...
 
     @overload
     async def get_user(
         self, name: str, *, include_projects: Literal[True]
-    ) -> tuple[User, list[ProjectUser]]:
-        ...
+    ) -> tuple[User, list[ProjectUser]]: ...
 
     @overload
     async def get_user(
@@ -94,8 +90,7 @@ class AdminClientABC(abc.ABC):
         include_orgs: Literal[True],
         include_clusters: bool = False,
         include_projects: bool = False,
-    ) -> GetUserResponse:
-        ...
+    ) -> GetUserResponse: ...
 
     @abstractmethod
     async def get_user(
@@ -105,12 +100,12 @@ class AdminClientABC(abc.ABC):
         include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
-    ) -> GetUserRet:
-        ...
+    ) -> GetUserRet: ...
 
     @abstractmethod
-    async def get_user_with_clusters(self, name: str) -> tuple[User, list[ClusterUser]]:
-        ...
+    async def get_user_with_clusters(
+        self, name: str
+    ) -> tuple[User, list[ClusterUser]]: ...
 
     @abstractmethod
     async def create_user(
@@ -120,23 +115,19 @@ class AdminClientABC(abc.ABC):
         first_name: str | None = None,
         last_name: str | None = None,
         skip_auto_add_to_clusters: bool = False,
-    ) -> User:
-        ...
+    ) -> User: ...
 
     @abstractmethod
     async def update_user(
         self,
         user: User,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abstractmethod
-    async def list_clusters(self) -> list[Cluster]:
-        ...
+    async def list_clusters(self) -> list[Cluster]: ...
 
     @abstractmethod
-    async def get_cluster(self, name: str) -> Cluster:
-        ...
+    async def get_cluster(self, name: str) -> Cluster: ...
 
     @abstractmethod
     async def create_cluster(
@@ -145,19 +136,16 @@ class AdminClientABC(abc.ABC):
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
-    ) -> Cluster:
-        ...
+    ) -> Cluster: ...
 
     @abstractmethod
     async def update_cluster(
         self,
         cluster: Cluster,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abstractmethod
-    async def delete_cluster(self, name: str) -> Cluster:
-        ...
+    async def delete_cluster(self, name: str) -> Cluster: ...
 
     @overload
     async def list_cluster_users(
@@ -165,8 +153,7 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         with_user_info: Literal[True],
         org_name: str | None = None,
-    ) -> list[ClusterUserWithInfo]:
-        ...
+    ) -> list[ClusterUserWithInfo]: ...
 
     @overload
     async def list_cluster_users(
@@ -174,8 +161,7 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         with_user_info: Literal[False] = ...,
         org_name: str | None = None,
-    ) -> list[ClusterUser]:
-        ...
+    ) -> list[ClusterUser]: ...
 
     @abstractmethod
     async def list_cluster_users(
@@ -183,8 +169,7 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         with_user_info: bool = False,
         org_name: str | None = None,
-    ) -> list[ClusterUser] | list[ClusterUserWithInfo]:
-        ...
+    ) -> list[ClusterUser] | list[ClusterUserWithInfo]: ...
 
     @overload
     async def get_cluster_user(
@@ -193,8 +178,7 @@ class AdminClientABC(abc.ABC):
         user_name: str,
         with_user_info: Literal[True] = ...,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def get_cluster_user(
@@ -203,8 +187,7 @@ class AdminClientABC(abc.ABC):
         user_name: str,
         with_user_info: Literal[False] = ...,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def get_cluster_user(
@@ -213,8 +196,7 @@ class AdminClientABC(abc.ABC):
         user_name: str,
         with_user_info: bool = False,
         org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @overload
     async def create_cluster_user(
@@ -227,8 +209,7 @@ class AdminClientABC(abc.ABC):
         quota: Quota | None = None,
         balance: Balance | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def create_cluster_user(
@@ -241,8 +222,7 @@ class AdminClientABC(abc.ABC):
         quota: Quota | None = None,
         balance: Balance | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def create_cluster_user(
@@ -255,32 +235,27 @@ class AdminClientABC(abc.ABC):
         balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: Literal[True]
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: Literal[False] = ...
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: bool = False
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @abstractmethod
     async def delete_cluster_user(
         self, cluster_name: str, user_name: str, org_name: str | None = None
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     async def update_cluster_user_quota(
@@ -292,8 +267,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_quota(
@@ -305,8 +279,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def update_cluster_user_quota(
@@ -318,8 +291,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: bool = False,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_quota_by_delta(
@@ -331,8 +303,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_quota_by_delta(
@@ -344,8 +315,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def update_cluster_user_quota_by_delta(
@@ -357,8 +327,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: bool = False,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance(
@@ -370,8 +339,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance(
@@ -383,8 +351,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def update_cluster_user_balance(
@@ -396,8 +363,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: bool = False,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance_by_delta(
@@ -409,8 +375,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance_by_delta(
@@ -422,8 +387,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def update_cluster_user_balance_by_delta(
@@ -435,8 +399,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: bool = False,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @overload
     async def charge_cluster_user(
@@ -448,8 +411,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def charge_cluster_user(
@@ -461,8 +423,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     @abstractmethod
     async def charge_cluster_user(
@@ -474,8 +435,7 @@ class AdminClientABC(abc.ABC):
         with_user_info: bool = False,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        ...
+    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @abstractmethod
     async def create_org_cluster(
@@ -488,32 +448,27 @@ class AdminClientABC(abc.ABC):
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         storage_size: int | None = None,
-    ) -> OrgCluster:
-        ...
+    ) -> OrgCluster: ...
 
     @abstractmethod
-    async def list_org_clusters(self, cluster_name: str) -> list[OrgCluster]:
-        ...
+    async def list_org_clusters(self, cluster_name: str) -> list[OrgCluster]: ...
 
     @abstractmethod
     async def get_org_cluster(
         self,
         cluster_name: str,
         org_name: str,
-    ) -> OrgCluster:
-        ...
+    ) -> OrgCluster: ...
 
     @abstractmethod
-    async def update_org_cluster(self, org_cluster: OrgCluster) -> None:
-        ...
+    async def update_org_cluster(self, org_cluster: OrgCluster) -> None: ...
 
     @abstractmethod
     async def delete_org_cluster(
         self,
         cluster_name: str,
         org_name: str,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abstractmethod
     async def update_org_cluster_defaults(
@@ -523,8 +478,7 @@ class AdminClientABC(abc.ABC):
         default_quota: Quota = Quota(),
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
-    ) -> OrgCluster:
-        ...
+    ) -> OrgCluster: ...
 
     @abstractmethod
     async def update_org_cluster_quota(
@@ -534,8 +488,7 @@ class AdminClientABC(abc.ABC):
         quota: Quota,
         *,
         idempotency_key: str | None = None,
-    ) -> OrgCluster:
-        ...
+    ) -> OrgCluster: ...
 
     @abstractmethod
     async def update_org_cluster_quota_by_delta(
@@ -545,8 +498,7 @@ class AdminClientABC(abc.ABC):
         delta: Quota,
         *,
         idempotency_key: str | None = None,
-    ) -> OrgCluster:
-        ...
+    ) -> OrgCluster: ...
 
     @abstractmethod
     async def update_org_cluster_balance(
@@ -556,8 +508,7 @@ class AdminClientABC(abc.ABC):
         credits: Decimal | None,
         *,
         idempotency_key: str | None = None,
-    ) -> OrgCluster:
-        ...
+    ) -> OrgCluster: ...
 
     @abstractmethod
     async def update_org_cluster_balance_by_delta(
@@ -567,66 +518,55 @@ class AdminClientABC(abc.ABC):
         delta: Decimal,
         *,
         idempotency_key: str | None = None,
-    ) -> OrgCluster:
-        ...
+    ) -> OrgCluster: ...
 
     @abstractmethod
-    async def list_orgs(self) -> list[Org]:
-        ...
+    async def list_orgs(self) -> list[Org]: ...
 
     @abstractmethod
-    async def get_org(self, name: str) -> Org:
-        ...
+    async def get_org(self, name: str) -> Org: ...
 
     @abstractmethod
     async def create_org(
         self,
         name: str,
         skip_auto_add_to_clusters: bool = False,
-    ) -> Org:
-        ...
+    ) -> Org: ...
 
     @abstractmethod
-    async def delete_org(self, name: str) -> Org:
-        ...
+    async def delete_org(self, name: str) -> Org: ...
 
     #  org user
 
     @overload
     async def list_org_users(
         self, org_name: str, with_user_info: Literal[True]
-    ) -> list[OrgUserWithInfo]:
-        ...
+    ) -> list[OrgUserWithInfo]: ...
 
     @overload
     async def list_org_users(
         self, org_name: str, with_user_info: Literal[False] = ...
-    ) -> list[OrgUser]:
-        ...
+    ) -> list[OrgUser]: ...
 
     @abstractmethod
     async def list_org_users(
         self, org_name: str, with_user_info: bool = False
-    ) -> list[OrgUser] | list[OrgUserWithInfo]:
-        ...
+    ) -> list[OrgUser] | list[OrgUserWithInfo]: ...
 
     @overload
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: Literal[True]
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: Literal[False] = ...
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     @abstractmethod
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: bool = False
-    ) -> OrgUser | OrgUserWithInfo:
-        ...
+    ) -> OrgUser | OrgUserWithInfo: ...
 
     @overload
     async def create_org_user(
@@ -635,8 +575,7 @@ class AdminClientABC(abc.ABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[True],
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def create_org_user(
@@ -645,8 +584,7 @@ class AdminClientABC(abc.ABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[False] = ...,
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     @abstractmethod
     async def create_org_user(
@@ -655,30 +593,25 @@ class AdminClientABC(abc.ABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: bool = False,
-    ) -> OrgUser | OrgUserWithInfo:
-        ...
+    ) -> OrgUser | OrgUserWithInfo: ...
 
     @overload
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: Literal[True]
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: Literal[False] = ...
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     @abstractmethod
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: bool = False
-    ) -> OrgUser | OrgUserWithInfo:
-        ...
+    ) -> OrgUser | OrgUserWithInfo: ...
 
     @abstractmethod
-    async def delete_org_user(self, org_name: str, user_name: str) -> None:
-        ...
+    async def delete_org_user(self, org_name: str, user_name: str) -> None: ...
 
     # projects
 
@@ -690,14 +623,12 @@ class AdminClientABC(abc.ABC):
         org_name: str | None,
         is_default: bool = False,
         default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
-    ) -> Project:
-        ...
+    ) -> Project: ...
 
     @abstractmethod
     async def list_projects(
         self, cluster_name: str, org_name: str | None = None
-    ) -> list[Project]:
-        ...
+    ) -> list[Project]: ...
 
     @abstractmethod
     async def get_project(
@@ -705,12 +636,10 @@ class AdminClientABC(abc.ABC):
         project_name: str,
         cluster_name: str,
         org_name: str | None,
-    ) -> Project:
-        ...
+    ) -> Project: ...
 
     @abstractmethod
-    async def update_project(self, project: Project) -> None:
-        ...
+    async def update_project(self, project: Project) -> None: ...
 
     @abstractmethod
     async def delete_project(
@@ -718,8 +647,7 @@ class AdminClientABC(abc.ABC):
         project_name: str,
         cluster_name: str,
         org_name: str | None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     #  project user
 
@@ -730,8 +658,7 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         org_name: str | None,
         with_user_info: Literal[True],
-    ) -> list[ProjectUserWithInfo]:
-        ...
+    ) -> list[ProjectUserWithInfo]: ...
 
     @overload
     async def list_project_users(
@@ -740,8 +667,7 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         org_name: str | None,
         with_user_info: Literal[False] = ...,
-    ) -> list[ProjectUser]:
-        ...
+    ) -> list[ProjectUser]: ...
 
     @abstractmethod
     async def list_project_users(
@@ -750,8 +676,7 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         org_name: str | None,
         with_user_info: bool = False,
-    ) -> list[ProjectUser] | list[ProjectUserWithInfo]:
-        ...
+    ) -> list[ProjectUser] | list[ProjectUserWithInfo]: ...
 
     @overload
     async def get_project_user(
@@ -761,8 +686,7 @@ class AdminClientABC(abc.ABC):
         org_name: str | None,
         user_name: str,
         with_user_info: Literal[True],
-    ) -> ProjectUserWithInfo:
-        ...
+    ) -> ProjectUserWithInfo: ...
 
     @overload
     async def get_project_user(
@@ -772,8 +696,7 @@ class AdminClientABC(abc.ABC):
         org_name: str | None,
         user_name: str,
         with_user_info: Literal[False] = ...,
-    ) -> ProjectUser:
-        ...
+    ) -> ProjectUser: ...
 
     @abstractmethod
     async def get_project_user(
@@ -783,8 +706,7 @@ class AdminClientABC(abc.ABC):
         org_name: str | None,
         user_name: str,
         with_user_info: bool = False,
-    ) -> ProjectUser | ProjectUserWithInfo:
-        ...
+    ) -> ProjectUser | ProjectUserWithInfo: ...
 
     @overload
     async def create_project_user(
@@ -796,8 +718,7 @@ class AdminClientABC(abc.ABC):
         *,
         with_user_info: Literal[True],
         role: ProjectUserRoleType | None = None,
-    ) -> ProjectUserWithInfo:
-        ...
+    ) -> ProjectUserWithInfo: ...
 
     @overload
     async def create_project_user(
@@ -809,8 +730,7 @@ class AdminClientABC(abc.ABC):
         *,
         with_user_info: Literal[False] = ...,
         role: ProjectUserRoleType | None = None,
-    ) -> ProjectUser:
-        ...
+    ) -> ProjectUser: ...
 
     @abstractmethod
     async def create_project_user(
@@ -822,12 +742,10 @@ class AdminClientABC(abc.ABC):
         *,
         with_user_info: bool = False,
         role: ProjectUserRoleType | None = None,
-    ) -> ProjectUser | ProjectUserWithInfo:
-        ...
+    ) -> ProjectUser | ProjectUserWithInfo: ...
 
     @abstractmethod
-    async def update_project_user(self, project_user: ProjectUser) -> None:
-        ...
+    async def update_project_user(self, project_user: ProjectUser) -> None: ...
 
     @abstractmethod
     async def delete_project_user(
@@ -836,8 +754,7 @@ class AdminClientABC(abc.ABC):
         cluster_name: str,
         org_name: str | None,
         user_name: str,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     # OLD API:
 
@@ -848,8 +765,7 @@ class AdminClientABC(abc.ABC):
         username: str,
         credits: Decimal,
         idempotency_key: str,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class AdminClientBase:
@@ -923,20 +839,17 @@ class AdminClientBase:
         return users
 
     @overload
-    async def get_user(self, name: str) -> User:
-        ...
+    async def get_user(self, name: str) -> User: ...
 
     @overload
     async def get_user(
         self, name: str, *, include_clusters: Literal[True]
-    ) -> tuple[User, list[ClusterUser]]:
-        ...
+    ) -> tuple[User, list[ClusterUser]]: ...
 
     @overload
     async def get_user(
         self, name: str, *, include_projects: Literal[True]
-    ) -> tuple[User, list[ProjectUser]]:
-        ...
+    ) -> tuple[User, list[ProjectUser]]: ...
 
     @overload
     async def get_user(
@@ -945,8 +858,7 @@ class AdminClientBase:
         *,
         include_clusters: Literal[True],
         include_projects: Literal[True],
-    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
-        ...
+    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]: ...
 
     @overload
     async def get_user(
@@ -956,8 +868,7 @@ class AdminClientBase:
         include_orgs: Literal[True],
         include_clusters: bool = False,
         include_projects: bool = False,
-    ) -> GetUserResponse:
-        ...
+    ) -> GetUserResponse: ...
 
     async def get_user(
         self,
@@ -1067,9 +978,11 @@ class AdminClientBase:
     def _parse_cluster_payload(self, payload: dict[str, Any]) -> Cluster:
         return Cluster(
             name=payload["name"],
-            default_credits=Decimal(payload["default_credits"])
-            if payload.get("default_credits")
-            else None,
+            default_credits=(
+                Decimal(payload["default_credits"])
+                if payload.get("default_credits")
+                else None
+            ),
             default_quota=self._parse_quota(payload.get("default_quota")),
             default_role=ClusterUserRoleType(payload["default_role"]),
             maintenance=payload["maintenance"],
@@ -1177,8 +1090,7 @@ class AdminClientBase:
         cluster_name: str,
         with_user_info: Literal[True],
         org_name: str | None = None,
-    ) -> list[ClusterUserWithInfo]:
-        ...
+    ) -> list[ClusterUserWithInfo]: ...
 
     @overload
     async def list_cluster_users(
@@ -1186,8 +1098,7 @@ class AdminClientBase:
         cluster_name: str,
         with_user_info: Literal[False] = ...,
         org_name: str | None = None,
-    ) -> list[ClusterUser]:
-        ...
+    ) -> list[ClusterUser]: ...
 
     async def list_cluster_users(
         self,
@@ -1219,8 +1130,7 @@ class AdminClientBase:
         user_name: str,
         with_user_info: Literal[True] = ...,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def get_cluster_user(
@@ -1229,8 +1139,7 @@ class AdminClientBase:
         user_name: str,
         with_user_info: Literal[False] = ...,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def get_cluster_user(
         self,
@@ -1277,8 +1186,7 @@ class AdminClientBase:
         quota: Quota | None = None,
         balance: Balance | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def create_cluster_user(
@@ -1291,8 +1199,7 @@ class AdminClientBase:
         quota: Quota | None = None,
         balance: Balance | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def create_cluster_user(
         self,
@@ -1326,14 +1233,12 @@ class AdminClientBase:
     @overload
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: Literal[True]
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: Literal[False] = ...
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: bool = False
@@ -1398,8 +1303,7 @@ class AdminClientBase:
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_quota(
@@ -1411,8 +1315,7 @@ class AdminClientBase:
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_quota(
         self,
@@ -1457,8 +1360,7 @@ class AdminClientBase:
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_quota_by_delta(
@@ -1470,8 +1372,7 @@ class AdminClientBase:
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_quota_by_delta(
         self,
@@ -1513,8 +1414,7 @@ class AdminClientBase:
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance(
@@ -1526,8 +1426,7 @@ class AdminClientBase:
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_balance(
         self,
@@ -1571,8 +1470,7 @@ class AdminClientBase:
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance_by_delta(
@@ -1584,8 +1482,7 @@ class AdminClientBase:
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_balance_by_delta(
         self,
@@ -1627,8 +1524,7 @@ class AdminClientBase:
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def charge_cluster_user(
@@ -1640,8 +1536,7 @@ class AdminClientBase:
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def charge_cluster_user(
         self,
@@ -1681,9 +1576,11 @@ class AdminClientBase:
             org_name=payload["org_name"],
             balance=self._parse_balance(payload.get("balance")),
             quota=self._parse_quota(payload.get("quota")),
-            default_credits=Decimal(payload["default_credits"])
-            if payload.get("default_credits")
-            else None,
+            default_credits=(
+                Decimal(payload["default_credits"])
+                if payload.get("default_credits")
+                else None
+            ),
             default_quota=self._parse_quota(payload.get("default_quota")),
             default_role=ClusterUserRoleType(payload["default_role"]),
             storage_size=payload.get("storage_size"),
@@ -1979,14 +1876,12 @@ class AdminClientBase:
     @overload
     async def list_org_users(
         self, org_name: str, with_user_info: Literal[True]
-    ) -> list[OrgUserWithInfo]:
-        ...
+    ) -> list[OrgUserWithInfo]: ...
 
     @overload
     async def list_org_users(
         self, org_name: str, with_user_info: Literal[False] = ...
-    ) -> list[OrgUser]:
-        ...
+    ) -> list[OrgUser]: ...
 
     async def list_org_users(
         self, org_name: str, with_user_info: bool = False
@@ -2004,14 +1899,12 @@ class AdminClientBase:
     @overload
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: Literal[True]
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: Literal[False] = ...
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: bool = False
@@ -2032,8 +1925,7 @@ class AdminClientBase:
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[True],
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def create_org_user(
@@ -2042,8 +1934,7 @@ class AdminClientBase:
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[False] = ...,
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     async def create_org_user(
         self,
@@ -2070,14 +1961,12 @@ class AdminClientBase:
     @overload
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: Literal[True]
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: Literal[False] = ...
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: bool = False
@@ -2234,8 +2123,7 @@ class AdminClientBase:
         cluster_name: str,
         org_name: str | None,
         with_user_info: Literal[True],
-    ) -> list[ProjectUserWithInfo]:
-        ...
+    ) -> list[ProjectUserWithInfo]: ...
 
     @overload
     async def list_project_users(
@@ -2244,8 +2132,7 @@ class AdminClientBase:
         cluster_name: str,
         org_name: str | None,
         with_user_info: Literal[False] = ...,
-    ) -> list[ProjectUser]:
-        ...
+    ) -> list[ProjectUser]: ...
 
     async def list_project_users(
         self,
@@ -2277,8 +2164,7 @@ class AdminClientBase:
         org_name: str | None,
         user_name: str,
         with_user_info: Literal[True],
-    ) -> ProjectUserWithInfo:
-        ...
+    ) -> ProjectUserWithInfo: ...
 
     @overload
     async def get_project_user(
@@ -2288,8 +2174,7 @@ class AdminClientBase:
         org_name: str | None,
         user_name: str,
         with_user_info: Literal[False] = ...,
-    ) -> ProjectUser:
-        ...
+    ) -> ProjectUser: ...
 
     async def get_project_user(
         self,
@@ -2325,8 +2210,7 @@ class AdminClientBase:
         *,
         with_user_info: Literal[True],
         role: ProjectUserRoleType | None = None,
-    ) -> ProjectUserWithInfo:
-        ...
+    ) -> ProjectUserWithInfo: ...
 
     @overload
     async def create_project_user(
@@ -2338,8 +2222,7 @@ class AdminClientBase:
         *,
         with_user_info: Literal[False] = ...,
         role: ProjectUserRoleType | None = None,
-    ) -> ProjectUser:
-        ...
+    ) -> ProjectUser: ...
 
     async def create_project_user(
         self,
@@ -2476,7 +2359,7 @@ class AdminClient(AdminClientBase, AdminClientABC):
         self._trace_configs = trace_configs
         self._client: aiohttp.ClientSession | None = None
 
-    async def __aenter__(self) -> "AdminClient":
+    async def __aenter__(self) -> AdminClient:
         self._init()
         return self
 
@@ -2517,7 +2400,7 @@ class AdminClient(AdminClientBase, AdminClientABC):
         method: str,
         path: str,
         *,
-        params: (Sequence[tuple[str, str]] | Mapping[str, str] | None) = None,
+        params: Sequence[tuple[str, str]] | Mapping[str, str] | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         assert self._client
@@ -2583,7 +2466,7 @@ class AdminClientDummy(AdminClientABC):
         user_info=UserInfo(email="email@examle.com"),
     )
 
-    async def __aenter__(self) -> "AdminClientDummy":
+    async def __aenter__(self) -> AdminClientDummy:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -2596,20 +2479,17 @@ class AdminClientDummy(AdminClientABC):
         return [self.DUMMY_USER]
 
     @overload
-    async def get_user(self, name: str) -> User:
-        ...
+    async def get_user(self, name: str) -> User: ...
 
     @overload
     async def get_user(
         self, name: str, *, include_clusters: Literal[True]
-    ) -> tuple[User, list[ClusterUser]]:
-        ...
+    ) -> tuple[User, list[ClusterUser]]: ...
 
     @overload
     async def get_user(
         self, name: str, *, include_projects: Literal[True]
-    ) -> tuple[User, list[ProjectUser]]:
-        ...
+    ) -> tuple[User, list[ProjectUser]]: ...
 
     @overload
     async def get_user(
@@ -2618,8 +2498,7 @@ class AdminClientDummy(AdminClientABC):
         *,
         include_clusters: Literal[True],
         include_projects: Literal[True],
-    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]:
-        ...
+    ) -> tuple[User, list[ClusterUser], list[ProjectUser]]: ...
 
     @overload
     async def get_user(
@@ -2629,8 +2508,7 @@ class AdminClientDummy(AdminClientABC):
         include_orgs: Literal[True],
         include_clusters: bool = False,
         include_projects: bool = False,
-    ) -> GetUserResponse:
-        ...
+    ) -> GetUserResponse: ...
 
     async def get_user(
         self,
@@ -2704,8 +2582,7 @@ class AdminClientDummy(AdminClientABC):
         cluster_name: str,
         with_user_info: Literal[True],
         org_name: str | None = None,
-    ) -> list[ClusterUserWithInfo]:
-        ...
+    ) -> list[ClusterUserWithInfo]: ...
 
     @overload
     async def list_cluster_users(
@@ -2713,8 +2590,7 @@ class AdminClientDummy(AdminClientABC):
         cluster_name: str,
         with_user_info: Literal[False] = ...,
         org_name: str | None = None,
-    ) -> list[ClusterUser]:
-        ...
+    ) -> list[ClusterUser]: ...
 
     async def list_cluster_users(
         self,
@@ -2731,8 +2607,7 @@ class AdminClientDummy(AdminClientABC):
         user_name: str,
         with_user_info: Literal[True] = ...,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def get_cluster_user(
@@ -2741,8 +2616,7 @@ class AdminClientDummy(AdminClientABC):
         user_name: str,
         with_user_info: Literal[False] = ...,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def get_cluster_user(
         self,
@@ -2764,8 +2638,7 @@ class AdminClientDummy(AdminClientABC):
         quota: Quota | None = None,
         balance: Balance | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def create_cluster_user(
@@ -2778,8 +2651,7 @@ class AdminClientDummy(AdminClientABC):
         quota: Quota | None = None,
         balance: Balance | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def create_cluster_user(
         self,
@@ -2797,14 +2669,12 @@ class AdminClientDummy(AdminClientABC):
     @overload
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: Literal[True]
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: Literal[False] = ...
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user(
         self, cluster_user: ClusterUser, with_user_info: bool = False
@@ -2826,8 +2696,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_quota(
@@ -2839,8 +2708,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_quota(
         self,
@@ -2864,8 +2732,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_quota_by_delta(
@@ -2877,8 +2744,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_quota_by_delta(
         self,
@@ -2902,8 +2768,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance(
@@ -2915,8 +2780,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_balance(
         self,
@@ -2940,8 +2804,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def update_cluster_user_balance_by_delta(
@@ -2953,8 +2816,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def update_cluster_user_balance_by_delta(
         self,
@@ -2978,8 +2840,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[True],
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUserWithInfo:
-        ...
+    ) -> ClusterUserWithInfo: ...
 
     @overload
     async def charge_cluster_user(
@@ -2991,8 +2852,7 @@ class AdminClientDummy(AdminClientABC):
         with_user_info: Literal[False] = ...,
         idempotency_key: str | None = None,
         org_name: str | None = None,
-    ) -> ClusterUser:
-        ...
+    ) -> ClusterUser: ...
 
     async def charge_cluster_user(
         self,
@@ -3110,14 +2970,12 @@ class AdminClientDummy(AdminClientABC):
     @overload
     async def list_org_users(
         self, org_name: str, with_user_info: Literal[True]
-    ) -> list[OrgUserWithInfo]:
-        ...
+    ) -> list[OrgUserWithInfo]: ...
 
     @overload
     async def list_org_users(
         self, org_name: str, with_user_info: Literal[False] = ...
-    ) -> list[OrgUser]:
-        ...
+    ) -> list[OrgUser]: ...
 
     async def list_org_users(
         self, org_name: str, with_user_info: bool = False
@@ -3127,14 +2985,12 @@ class AdminClientDummy(AdminClientABC):
     @overload
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: Literal[True]
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: Literal[False] = ...
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     async def get_org_user(
         self, org_name: str, user_name: str, with_user_info: bool = False
@@ -3148,8 +3004,7 @@ class AdminClientDummy(AdminClientABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[True],
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def create_org_user(
@@ -3158,8 +3013,7 @@ class AdminClientDummy(AdminClientABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[False] = ...,
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     async def create_org_user(
         self,
@@ -3173,14 +3027,12 @@ class AdminClientDummy(AdminClientABC):
     @overload
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: Literal[True]
-    ) -> OrgUserWithInfo:
-        ...
+    ) -> OrgUserWithInfo: ...
 
     @overload
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: Literal[False] = ...
-    ) -> OrgUser:
-        ...
+    ) -> OrgUser: ...
 
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: bool = False
@@ -3235,8 +3087,7 @@ class AdminClientDummy(AdminClientABC):
         cluster_name: str,
         org_name: str | None,
         with_user_info: Literal[True],
-    ) -> list[ProjectUserWithInfo]:
-        ...
+    ) -> list[ProjectUserWithInfo]: ...
 
     @overload
     async def list_project_users(
@@ -3245,8 +3096,7 @@ class AdminClientDummy(AdminClientABC):
         cluster_name: str,
         org_name: str | None,
         with_user_info: Literal[False] = ...,
-    ) -> list[ProjectUser]:
-        ...
+    ) -> list[ProjectUser]: ...
 
     async def list_project_users(
         self,
@@ -3265,8 +3115,7 @@ class AdminClientDummy(AdminClientABC):
         org_name: str | None,
         user_name: str,
         with_user_info: Literal[True],
-    ) -> ProjectUserWithInfo:
-        ...
+    ) -> ProjectUserWithInfo: ...
 
     @overload
     async def get_project_user(
@@ -3276,8 +3125,7 @@ class AdminClientDummy(AdminClientABC):
         org_name: str | None,
         user_name: str,
         with_user_info: Literal[False] = ...,
-    ) -> ProjectUser:
-        ...
+    ) -> ProjectUser: ...
 
     async def get_project_user(
         self,
@@ -3299,8 +3147,7 @@ class AdminClientDummy(AdminClientABC):
         *,
         with_user_info: Literal[True],
         role: ProjectUserRoleType | None = None,
-    ) -> ProjectUserWithInfo:
-        ...
+    ) -> ProjectUserWithInfo: ...
 
     @overload
     async def create_project_user(
@@ -3312,8 +3159,7 @@ class AdminClientDummy(AdminClientABC):
         *,
         with_user_info: Literal[False] = ...,
         role: ProjectUserRoleType | None = None,
-    ) -> ProjectUser:
-        ...
+    ) -> ProjectUser: ...
 
     async def create_project_user(
         self,

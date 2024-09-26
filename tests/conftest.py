@@ -216,9 +216,9 @@ class AdminServer:
         default_quota_raw = payload.get("default_quota", {})
         new_cluster = Cluster(
             name=payload["name"],
-            default_credits=Decimal(default_credits_raw)
-            if default_credits_raw
-            else None,
+            default_credits=(
+                Decimal(default_credits_raw) if default_credits_raw else None
+            ),
             default_quota=Quota(
                 total_running_jobs=self._int_or_none(
                     default_quota_raw.get("total_running_jobs")
@@ -244,9 +244,9 @@ class AdminServer:
         default_quota_raw = payload.get("default_quota", {})
         changed_cluster = Cluster(
             name=payload["name"],
-            default_credits=Decimal(default_credits_raw)
-            if default_credits_raw
-            else None,
+            default_credits=(
+                Decimal(default_credits_raw) if default_credits_raw else None
+            ),
             default_quota=Quota(
                 total_running_jobs=self._int_or_none(
                     default_quota_raw.get("total_running_jobs")
@@ -333,9 +333,9 @@ class AdminServer:
             quota=Quota(total_running_jobs=payload["quota"].get("total_running_jobs")),
             balance=Balance(
                 credits=Decimal(credits_raw) if credits_raw else None,
-                spent_credits=Decimal(spend_credits_raw)
-                if spend_credits_raw
-                else Decimal(0),
+                spent_credits=(
+                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
+                ),
             ),
         )
         self.cluster_users.append(new_cluster_user)
@@ -367,9 +367,9 @@ class AdminServer:
             quota=Quota(total_running_jobs=payload["quota"].get("total_running_jobs")),
             balance=Balance(
                 credits=Decimal(credits_raw) if credits_raw else None,
-                spent_credits=Decimal(spend_credits_raw)
-                if spend_credits_raw
-                else Decimal(0),
+                spent_credits=(
+                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
+                ),
             ),
         )
         assert new_cluster_user.user_name == user_name
@@ -695,18 +695,18 @@ class AdminServer:
             ),
             balance=Balance(
                 credits=Decimal(credits_raw) if credits_raw else None,
-                spent_credits=Decimal(spend_credits_raw)
-                if spend_credits_raw
-                else Decimal(0),
+                spent_credits=(
+                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
+                ),
             ),
             default_quota=Quota(
                 total_running_jobs=payload.get("default_quota", {}).get(
                     "total_running_jobs"
                 )
             ),
-            default_credits=Decimal(default_credits_raw)
-            if default_credits_raw
-            else None,
+            default_credits=(
+                Decimal(default_credits_raw) if default_credits_raw else None
+            ),
             default_role=ClusterUserRoleType(
                 payload.get("default_role", ClusterUserRoleType.USER.value)
             ),
@@ -737,18 +737,18 @@ class AdminServer:
             ),
             balance=Balance(
                 credits=Decimal(credits_raw) if credits_raw else None,
-                spent_credits=Decimal(spend_credits_raw)
-                if spend_credits_raw
-                else Decimal(0),
+                spent_credits=(
+                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
+                ),
             ),
             default_quota=Quota(
                 total_running_jobs=payload.get("default_quota", {}).get(
                     "total_running_jobs"
                 )
             ),
-            default_credits=Decimal(default_credits_raw)
-            if default_credits_raw
-            else None,
+            default_credits=(
+                Decimal(default_credits_raw) if default_credits_raw else None
+            ),
             default_role=ClusterUserRoleType(
                 payload.get("default_role", ClusterUserRoleType.USER.value)
             ),
@@ -827,9 +827,9 @@ class AdminServer:
                             "total_running_jobs"
                         )
                     ),
-                    default_credits=Decimal(default_credits_raw)
-                    if default_credits_raw
-                    else None,
+                    default_credits=(
+                        Decimal(default_credits_raw) if default_credits_raw else None
+                    ),
                     default_role=ClusterUserRoleType(
                         payload.get("default_role", ClusterUserRoleType.USER.value)
                     ),
