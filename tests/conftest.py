@@ -147,9 +147,16 @@ class AdminServer:
         return aiohttp.web.json_response(resp)
 
     def _serialize_org(self, org: Org) -> dict[str, Any]:
-        return {
+        res: dict[str, Any] = {
             "name": org.name,
+            "balance": {
+                "spent_credits": str(org.balance.spent_credits),
+            },
         }
+        if org.balance.credits is not None:
+            res["balance"]["credits"] = str(org.balance.credits)
+
+        return res
 
     async def handle_org_post(
         self, request: aiohttp.web.Request
@@ -188,6 +195,50 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         resp = [self._serialize_org(org) for org in self.orgs]
         return aiohttp.web.json_response(resp)
+
+    async def handle_org_patch_balance(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org in enumerate(self.orgs):
+            if org.name == org_name:
+                balance = org.balance
+                if "credits" in payload:
+                    credits = (
+                        Decimal(payload["credits"]) if payload["credits"] else None
+                    )
+                    balance = replace(balance, credits=credits)
+                if payload.get("additional_credits") and balance.credits is not None:
+                    additional_credits = Decimal(payload["additional_credits"])
+                    balance = replace(
+                        balance, credits=balance.credits + additional_credits
+                    )
+                org = replace(org, balance=balance)
+                self.orgs[index] = org
+                return aiohttp.web.json_response(self._serialize_org(org))
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_org_add_spending(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org in enumerate(self.orgs):
+            if org.name == org_name:
+                balance = org.balance
+                spending = Decimal(payload["spending"])
+                balance = replace(
+                    balance, spent_credits=balance.spent_credits + spending
+                )
+                if balance.credits:
+                    balance = replace(balance, credits=balance.credits - spending)
+                org = replace(org, balance=balance)
+                self.orgs[index] = org
+                return aiohttp.web.json_response(self._serialize_org(org))
+        raise aiohttp.web.HTTPNotFound
 
     def _serialize_cluster(self, cluster: Cluster) -> dict[str, Any]:
         resp: dict[str, Any] = {
@@ -1198,6 +1249,14 @@ async def mock_admin_server(
                 aiohttp.web.delete(
                     "/api/v1/orgs/{oname}",
                     admin_server.handle_org_delete,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/orgs/{oname}/balance",
+                    admin_server.handle_org_patch_balance,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/orgs/{oname}/spending",
+                    admin_server.handle_org_add_spending,
                 ),
                 aiohttp.web.get(
                     "/api/v1/clusters",

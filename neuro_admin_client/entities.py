@@ -78,6 +78,7 @@ class Cluster:
 @dataclass(frozen=True)
 class Org:
     name: str
+    balance: Balance = Balance()
 
 
 @unique
