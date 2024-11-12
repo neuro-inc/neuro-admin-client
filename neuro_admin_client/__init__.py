@@ -546,6 +546,33 @@ class AdminClientABC(abc.ABC):
     @abstractmethod
     async def delete_org(self, name: str) -> Org: ...
 
+    @abstractmethod
+    async def charge_org(
+        self,
+        org_name: str,
+        amount: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org: ...
+
+    @abstractmethod
+    async def update_org_balance(
+        self,
+        org_name: str,
+        credits: Decimal | None,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org: ...
+
+    @abstractmethod
+    async def update_org_balance_by_delta(
+        self,
+        org_name: str,
+        delta: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org: ...
+
     #  org user
 
     @overload
@@ -1851,6 +1878,7 @@ class AdminClientBase:
     def _parse_org_payload(self, payload: dict[str, Any]) -> Org:
         return Org(
             name=payload["name"],
+            balance=self._parse_balance(payload.get("balance")),
         )
 
     async def list_orgs(self) -> list[Org]:
@@ -1888,6 +1916,72 @@ class AdminClientBase:
 
     async def delete_org(self, name: str) -> Org:
         async with self._request("DELETE", f"orgs/{name}") as resp:
+            resp.raise_for_status()
+            raw_org = await resp.json()
+            return self._parse_org_payload(raw_org)
+
+    async def charge_org(
+        self,
+        org_name: str,
+        amount: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org:
+        payload = {"spending": str(amount)}
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        url = f"orgs/{org_name}/spending"
+        async with self._request(
+            "POST",
+            url,
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org = await resp.json()
+            return self._parse_org_payload(raw_org)
+
+    async def update_org_balance(
+        self,
+        org_name: str,
+        credits: Decimal | None,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org:
+        payload = {
+            "credits": str(credits) if credits else None,
+        }
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        async with self._request(
+            "PATCH",
+            f"orgs/{org_name}/balance",
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org = await resp.json()
+            return self._parse_org_payload(raw_org)
+
+    async def update_org_balance_by_delta(
+        self,
+        org_name: str,
+        delta: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org:
+        payload = {"additional_credits": str(delta)}
+        params = {}
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        async with self._request(
+            "PATCH",
+            f"orgs/{org_name}/balance",
+            json=payload,
+            params=params,
+        ) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
             return self._parse_org_payload(raw_org)
@@ -2472,9 +2566,7 @@ class AdminClientDummy(AdminClientABC):
         org_name=None,
         user_info=UserInfo(email="email@examle.com"),
     )
-    DUMMY_ORG = Org(
-        name="org",
-    )
+    DUMMY_ORG = Org(name="org", balance=Balance())
     DUMMY_ORG_CLUSTER = OrgCluster(
         org_name="org",
         cluster_name="default",
@@ -3013,6 +3105,33 @@ class AdminClientDummy(AdminClientABC):
 
     async def delete_org(self, name: str) -> Org:
         raise NotImplementedError()
+
+    async def charge_org(
+        self,
+        org_name: str,
+        amount: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org:
+        return self.DUMMY_ORG
+
+    async def update_org_balance(
+        self,
+        org_name: str,
+        credits: Decimal | None,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org:
+        return self.DUMMY_ORG
+
+    async def update_org_balance_by_delta(
+        self,
+        org_name: str,
+        delta: Decimal,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Org:
+        return self.DUMMY_ORG
 
     #  org user
 

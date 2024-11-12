@@ -1326,6 +1326,40 @@ class TestAdminClient:
             assert cluster_user.balance.credits == Decimal(-5)
             assert cluster_user.balance.spent_credits == Decimal(15)
 
+    async def test_org_add_spending(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+                balance=Balance(credits=Decimal(10)),
+            )
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org = await client.charge_org(org_name="org", amount=Decimal(15))
+            assert org.balance.credits == Decimal(-5)
+            assert org.balance.spent_credits == Decimal(15)
+
+    async def test_org_add_balance_delta(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+                balance=Balance(credits=Decimal(10)),
+            )
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org = await client.update_org_balance_by_delta(
+                org_name="org", delta=Decimal(15)
+            )
+            assert org.balance.credits == Decimal(25)
+            assert org.balance.spent_credits == Decimal(0)
+
+            org = await client.update_org_balance_by_delta(
+                org_name="org", delta=Decimal(-30)
+            )
+            assert org.balance.credits == Decimal(-5)
+            assert org.balance.spent_credits == Decimal(0)
+
     async def test_patch_cluster_user_with_org_quota(
         self, mock_admin_server: AdminServer
     ) -> None:
