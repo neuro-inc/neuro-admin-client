@@ -207,7 +207,6 @@ class AdminClientABC(abc.ABC):
         *,
         with_user_info: Literal[True],
         quota: Quota | None = None,
-        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo: ...
 
@@ -220,7 +219,6 @@ class AdminClientABC(abc.ABC):
         *,
         with_user_info: Literal[False] = ...,
         quota: Quota | None = None,
-        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser: ...
 
@@ -232,7 +230,6 @@ class AdminClientABC(abc.ABC):
         role: ClusterUserRoleType,
         *,
         quota: Quota | None = None,
-        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo: ...
@@ -329,78 +326,6 @@ class AdminClientABC(abc.ABC):
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo: ...
 
-    @overload
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    @abstractmethod
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo: ...
-
-    @overload
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    @abstractmethod
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo: ...
-
     @abstractmethod
     async def charge_org_cluster(
         self,
@@ -410,42 +335,6 @@ class AdminClientABC(abc.ABC):
         *,
         idempotency_key: str | None = None,
     ) -> OrgCluster: ...
-
-    @overload
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    @abstractmethod
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo: ...
 
     @abstractmethod
     async def create_org_cluster(
@@ -647,6 +536,105 @@ class AdminClientABC(abc.ABC):
         self, org_user: OrgUser, with_user_info: bool = False
     ) -> OrgUser | OrgUserWithInfo: ...
 
+    @overload
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    @abstractmethod
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo: ...
+
+    @overload
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    @abstractmethod
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo: ...
+
+    @overload
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    @abstractmethod
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo: ...
+
     @abstractmethod
     async def delete_org_user(self, org_name: str, user_name: str) -> None: ...
 
@@ -844,6 +832,7 @@ class AdminClientBase:
             user_name=user_name,
             role=OrgUserRoleType(payload["role"]),
             org_name=payload["org_name"],
+            balance=self._parse_balance(payload.get("balance")),
         )
 
     def _parse_user_cluster_payload(
@@ -853,7 +842,6 @@ class AdminClientBase:
             user_name=user_name,
             role=ClusterUserRoleType(payload["role"]),
             quota=self._parse_quota(payload.get("quota")),
-            balance=self._parse_balance(payload.get("balance")),
             org_name=payload.get("org_name"),
             cluster_name=payload["cluster_name"],
         )
@@ -1113,7 +1101,6 @@ class AdminClientBase:
             user_name=payload["user_name"],
             role=role,
             quota=self._parse_quota(payload.get("quota")),
-            balance=self._parse_balance(payload.get("balance")),
             org_name=payload.get("org_name"),
             cluster_name=cluster_name,
         )
@@ -1222,7 +1209,6 @@ class AdminClientBase:
         *,
         with_user_info: Literal[True],
         quota: Quota | None = None,
-        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo: ...
 
@@ -1235,7 +1221,6 @@ class AdminClientBase:
         *,
         with_user_info: Literal[False] = ...,
         quota: Quota | None = None,
-        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser: ...
 
@@ -1246,7 +1231,6 @@ class AdminClientBase:
         role: ClusterUserRoleType,
         *,
         quota: Quota | None = None,
-        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
@@ -1255,8 +1239,6 @@ class AdminClientBase:
             payload["org_name"] = org_name
         if quota:
             payload["quota"] = self._quota_to_payload(quota)
-        if balance:
-            payload["balance"] = self._balance_to_payload(balance)
 
         async with self._request(
             "POST",
@@ -1286,7 +1268,6 @@ class AdminClientBase:
             "user_name": cluster_user.user_name,
             "role": cluster_user.role.value,
             "quota": {},
-            "balance": {},
         }
         if cluster_user.org_name:
             payload["org_name"] = cluster_user.org_name
@@ -1294,12 +1275,6 @@ class AdminClientBase:
             payload["quota"][
                 "total_running_jobs"
             ] = cluster_user.quota.total_running_jobs
-        if cluster_user.balance.credits is not None:
-            payload["balance"]["credits"] = str(cluster_user.balance.credits)
-        if cluster_user.balance.spent_credits is not None:
-            payload["balance"]["spent_credits"] = str(
-                cluster_user.balance.spent_credits
-            )
         if cluster_user.org_name:
             url = (
                 f"clusters/{cluster_user.cluster_name}/orgs/"
@@ -1442,116 +1417,6 @@ class AdminClientBase:
             raw_user = await resp.json()
             return self._parse_cluster_user(cluster_name, raw_user)
 
-    @overload
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        payload = {
-            "credits": str(credits) if credits else None,
-        }
-        params = {
-            "with_user_info": _to_query_bool(with_user_info),
-        }
-        if idempotency_key:
-            params["idempotency_key"] = idempotency_key
-        if org_name:
-            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/balance"
-        else:
-            url = f"clusters/{cluster_name}/users/{user_name}/balance"
-        async with self._request(
-            "PATCH",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
-            resp.raise_for_status()
-            raw_user = await resp.json()
-            return self._parse_cluster_user(cluster_name, raw_user)
-
-    @overload
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        payload = {"additional_credits": str(delta)}
-        params = {
-            "with_user_info": _to_query_bool(with_user_info),
-        }
-        if idempotency_key:
-            params["idempotency_key"] = idempotency_key
-        if org_name:
-            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/balance"
-        else:
-            url = f"clusters/{cluster_name}/users/{user_name}/balance"
-        async with self._request(
-            "PATCH",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
-            resp.raise_for_status()
-            raw_user = await resp.json()
-            return self._parse_cluster_user(cluster_name, raw_user)
-
     async def charge_org_cluster(
         self,
         cluster_name: str,
@@ -1574,60 +1439,6 @@ class AdminClientBase:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_org_cluster(cluster_name, raw_user)
-
-    @overload
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        payload = {"spending": str(amount)}
-        params = {
-            "with_user_info": _to_query_bool(with_user_info),
-        }
-        if idempotency_key:
-            params["idempotency_key"] = idempotency_key
-        if org_name:
-            url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/spending"
-        else:
-            url = f"clusters/{cluster_name}/users/{user_name}/spending"
-        async with self._request(
-            "POST",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
-            resp.raise_for_status()
-            raw_user = await resp.json()
-            return self._parse_cluster_user(cluster_name, raw_user)
 
     def _parse_org_cluster(
         self, cluster_name: str, payload: dict[str, Any]
@@ -1995,6 +1806,7 @@ class AdminClientBase:
             user_name=payload["user_name"],
             role=OrgUserRoleType(payload["role"]),
             org_name=org_name,
+            balance=self._parse_balance(payload.get("balance")),
         )
         if "user_info" in payload:
             user_info = self._parse_user_info_payload(payload["user_info"])
@@ -2053,6 +1865,7 @@ class AdminClientBase:
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[True],
+        balance: Balance | None = None,
     ) -> OrgUserWithInfo: ...
 
     @overload
@@ -2062,6 +1875,7 @@ class AdminClientBase:
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[False] = ...,
+        balance: Balance | None = None,
     ) -> OrgUser: ...
 
     async def create_org_user(
@@ -2070,11 +1884,14 @@ class AdminClientBase:
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: bool = False,
+        balance: Balance | None = None,
     ) -> OrgUser | OrgUserWithInfo:
-        payload = {
+        payload: dict[str, Any] = {
             "user_name": user_name,
             "role": role.value,
         }
+        if balance:
+            payload["balance"] = self._balance_to_payload(balance)
 
         async with self._request(
             "POST",
@@ -2099,10 +1916,15 @@ class AdminClientBase:
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: bool = False
     ) -> OrgUser | OrgUserWithInfo:
-        payload = {
+        payload: dict[str, Any] = {
             "user_name": org_user.user_name,
             "role": org_user.role.value,
+            "balance": {},
         }
+        if org_user.balance.credits is not None:
+            payload["balance"]["credits"] = str(org_user.balance.credits)
+        if org_user.balance.spent_credits is not None:
+            payload["balance"]["spent_credits"] = str(org_user.balance.spent_credits)
 
         async with self._request(
             "PUT",
@@ -2113,6 +1935,155 @@ class AdminClientBase:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_org_user(org_user.org_name, raw_user)
+
+    @overload
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo:
+        payload = {
+            "credits": str(credits) if credits else None,
+        }
+        params = {
+            "with_user_info": _to_query_bool(with_user_info),
+        }
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+
+        url = f"orgs/{org_name}/users/{user_name}/balance"
+
+        async with self._request(
+            "PATCH",
+            url,
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_user = await resp.json()
+            return self._parse_org_user(org_name, raw_user)
+
+    @overload
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo:
+        payload = {"additional_credits": str(delta)}
+        params = {
+            "with_user_info": _to_query_bool(with_user_info),
+        }
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        url = f"orgs/{org_name}/users/{user_name}/balance"
+        async with self._request(
+            "PATCH",
+            url,
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_user = await resp.json()
+            return self._parse_org_user(org_name, raw_user)
+
+    @overload
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo:
+        payload = {"spending": str(amount)}
+        params = {
+            "with_user_info": _to_query_bool(with_user_info),
+        }
+        if idempotency_key:
+            params["idempotency_key"] = idempotency_key
+        url = f"orgs/{org_name}/users/{user_name}/spending"
+
+        async with self._request(
+            "POST",
+            url,
+            json=payload,
+            params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_user = await resp.json()
+            return self._parse_org_user(org_name, raw_user)
 
     async def delete_org_user(self, org_name: str, user_name: str) -> None:
         async with self._request(
@@ -2562,7 +2533,6 @@ class AdminClientDummy(AdminClientABC):
         user_name="user",
         role=ClusterUserRoleType.ADMIN,
         quota=Quota(),
-        balance=Balance(),
         org_name=None,
         user_info=UserInfo(email="email@examle.com"),
     )
@@ -2578,6 +2548,7 @@ class AdminClientDummy(AdminClientABC):
         org_name="org",
         user_name="user",
         role=OrgUserRoleType.ADMIN,
+        balance=Balance(),
         user_info=UserInfo(email="email@examle.com"),
     )
     DUMMY_PROJECT = Project(
@@ -2767,7 +2738,6 @@ class AdminClientDummy(AdminClientABC):
         *,
         with_user_info: Literal[True],
         quota: Quota | None = None,
-        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo: ...
 
@@ -2780,7 +2750,6 @@ class AdminClientDummy(AdminClientABC):
         *,
         with_user_info: Literal[False] = ...,
         quota: Quota | None = None,
-        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser: ...
 
@@ -2791,7 +2760,6 @@ class AdminClientDummy(AdminClientABC):
         role: ClusterUserRoleType,
         *,
         quota: Quota | None = None,
-        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
@@ -2889,78 +2857,6 @@ class AdminClientDummy(AdminClientABC):
     ) -> ClusterUser | ClusterUserWithInfo:
         return self.DUMMY_CLUSTER_USER
 
-    @overload
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    async def update_cluster_user_balance(
-        self,
-        cluster_name: str,
-        user_name: str,
-        credits: Decimal | None,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        return self.DUMMY_CLUSTER_USER
-
-    @overload
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    async def update_cluster_user_balance_by_delta(
-        self,
-        cluster_name: str,
-        user_name: str,
-        delta: Decimal,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        return self.DUMMY_CLUSTER_USER
-
     async def charge_org_cluster(
         self,
         cluster_name: str,
@@ -2970,42 +2866,6 @@ class AdminClientDummy(AdminClientABC):
         idempotency_key: str | None = None,
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
-
-    @overload
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: Literal[True],
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUserWithInfo: ...
-
-    @overload
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: Literal[False] = ...,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser: ...
-
-    async def charge_cluster_user(
-        self,
-        cluster_name: str,
-        user_name: str,
-        amount: Decimal,
-        *,
-        with_user_info: bool = False,
-        idempotency_key: str | None = None,
-        org_name: str | None = None,
-    ) -> ClusterUser | ClusterUserWithInfo:
-        return self.DUMMY_CLUSTER_USER
 
     async def create_org_cluster(
         self,
@@ -3172,6 +3032,7 @@ class AdminClientDummy(AdminClientABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[True],
+        balance: Balance | None = None,
     ) -> OrgUserWithInfo: ...
 
     @overload
@@ -3181,6 +3042,7 @@ class AdminClientDummy(AdminClientABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: Literal[False] = ...,
+        balance: Balance | None = None,
     ) -> OrgUser: ...
 
     async def create_org_user(
@@ -3189,6 +3051,7 @@ class AdminClientDummy(AdminClientABC):
         user_name: str,
         role: OrgUserRoleType,
         with_user_info: bool = False,
+        balance: Balance | None = None,
     ) -> OrgUser | OrgUserWithInfo:
         return self.DUMMY_ORG_USER
 
@@ -3204,6 +3067,105 @@ class AdminClientDummy(AdminClientABC):
 
     async def update_org_user(
         self, org_user: OrgUser, with_user_info: bool = False
+    ) -> OrgUser | OrgUserWithInfo:
+        return self.DUMMY_ORG_USER
+
+    @overload
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    async def update_org_user_balance(
+        self,
+        org_name: str,
+        user_name: str,
+        credits: Decimal | None,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo:
+        return self.DUMMY_ORG_USER
+
+    @overload
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    async def update_org_user_balance_by_delta(
+        self,
+        org_name: str,
+        user_name: str,
+        delta: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
+    ) -> OrgUser | OrgUserWithInfo:
+        return self.DUMMY_ORG_USER
+
+    @overload
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[True],
+        idempotency_key: str | None = None,
+    ) -> OrgUserWithInfo: ...
+
+    @overload
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: Literal[False] = ...,
+        idempotency_key: str | None = None,
+    ) -> OrgUser: ...
+
+    async def charge_org_user(
+        self,
+        org_name: str,
+        user_name: str,
+        amount: Decimal,
+        *,
+        with_user_info: bool = False,
+        idempotency_key: str | None = None,
     ) -> OrgUser | OrgUserWithInfo:
         return self.DUMMY_ORG_USER
 

@@ -153,7 +153,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster1",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -161,7 +160,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster2",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -186,6 +184,7 @@ class TestAdminClient:
                 user_name="test1",
                 org_name="org1",
                 role=OrgUserRoleType.ADMIN,
+                balance=Balance(),
             )
         ]
         mock_admin_server.clusters = [
@@ -207,7 +206,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster1",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -215,7 +213,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster2",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -475,7 +472,6 @@ class TestAdminClient:
                 cluster_name="test",
                 user_name="test_user",
                 role=ClusterUserRoleType.USER,
-                balance=Balance(credits=Decimal(20)),
                 quota=Quota(total_running_jobs=12),
                 with_user_info=True,
             )
@@ -487,7 +483,6 @@ class TestAdminClient:
         assert res_user.user_name == "test_user"
         assert res_user.role == ClusterUserRoleType.USER
         assert res_user.quota.total_running_jobs == 12
-        assert res_user.balance.credits == Decimal(20)
         assert res_user_with_info.user_info.email == "email"
 
         assert mock_admin_server.cluster_users == [res_user]
@@ -500,7 +495,6 @@ class TestAdminClient:
                 cluster_name="test",
                 user_name="test_user",
                 role=ClusterUserRoleType.USER,
-                balance=Balance(credits=Decimal(20)),
                 quota=Quota(total_running_jobs=12),
             )
             res_user = replace(res_user, role=ClusterUserRoleType.ADMIN)
@@ -519,7 +513,6 @@ class TestAdminClient:
                 cluster_name="test",
                 user_name="test_user",
                 role=ClusterUserRoleType.USER,
-                balance=Balance(credits=Decimal(20)),
                 quota=Quota(total_running_jobs=12),
                 with_user_info=True,
                 org_name="some_org",
@@ -535,7 +528,6 @@ class TestAdminClient:
         assert res_user.org_name == "some_org"
         assert res_user.role == ClusterUserRoleType.USER
         assert res_user.quota.total_running_jobs == 12
-        assert res_user.balance.credits == Decimal(20)
         assert res_user_with_info.user_info.email == "email"
 
         assert mock_admin_server.cluster_users == [res_user]
@@ -550,7 +542,6 @@ class TestAdminClient:
                 cluster_name="test",
                 user_name="test_user",
                 role=ClusterUserRoleType.USER,
-                balance=Balance(credits=Decimal(20)),
                 quota=Quota(total_running_jobs=12),
                 org_name="some_org",
             )
@@ -584,7 +575,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -592,7 +582,6 @@ class TestAdminClient:
                 user_name="test2",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -630,7 +619,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -638,7 +626,6 @@ class TestAdminClient:
                 user_name="test2",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -684,7 +671,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -692,7 +678,6 @@ class TestAdminClient:
                 user_name="test2",
                 cluster_name="cluster",
                 org_name="org1",
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -728,7 +713,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -736,7 +720,6 @@ class TestAdminClient:
                 user_name="test2",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -777,7 +760,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -785,7 +767,6 @@ class TestAdminClient:
                 user_name="test2",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -823,7 +804,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name="org",
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.USER,
             ),
@@ -831,7 +811,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(),
                 role=ClusterUserRoleType.ADMIN,
             ),
@@ -854,6 +833,7 @@ class TestAdminClient:
                 org_name="test",
                 user_name="test_user",
                 role=OrgUserRoleType.USER,
+                balance=Balance(credits=Decimal(20)),
                 with_user_info=True,
             )
             res_user = await client.get_org_user(org_name="test", user_name="test_user")
@@ -862,6 +842,7 @@ class TestAdminClient:
         assert res_user.user_name == "test_user"
         assert res_user.role == OrgUserRoleType.USER
         assert res_user_with_info.user_info.email == "email"
+        assert res_user.balance.credits == Decimal(20)
 
         assert mock_admin_server.org_users == [res_user]
 
@@ -873,6 +854,7 @@ class TestAdminClient:
                 org_name="test",
                 user_name="test_user",
                 role=OrgUserRoleType.USER,
+                balance=Balance(credits=Decimal(20)),
                 with_user_info=True,
             )
             res_user = await client.get_org_user(org_name="test", user_name="test_user")
@@ -907,11 +889,13 @@ class TestAdminClient:
                 user_name="test1",
                 org_name="org",
                 role=OrgUserRoleType.USER,
+                balance=Balance(),
             ),
             OrgUser(
                 user_name="test2",
                 org_name="org",
                 role=OrgUserRoleType.ADMIN,
+                balance=Balance(),
             ),
         ]
 
@@ -941,11 +925,13 @@ class TestAdminClient:
             OrgUser(
                 user_name="test1",
                 org_name="org",
+                balance=Balance(),
                 role=OrgUserRoleType.USER,
             ),
             OrgUser(
                 user_name="test2",
                 org_name="org",
+                balance=Balance(),
                 role=OrgUserRoleType.ADMIN,
             ),
         ]
@@ -977,11 +963,13 @@ class TestAdminClient:
             OrgUser(
                 user_name="test1",
                 org_name="org",
+                balance=Balance(),
                 role=OrgUserRoleType.USER,
             ),
             OrgUser(
                 user_name="test2",
                 org_name="org",
+                balance=Balance(),
                 role=OrgUserRoleType.ADMIN,
             ),
         ]
@@ -1212,7 +1200,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name=None,
-                balance=Balance(),
                 quota=Quota(total_running_jobs=10),
                 role=ClusterUserRoleType.USER,
             ),
@@ -1233,44 +1220,33 @@ class TestAdminClient:
             )
             assert cluster_user.quota.total_running_jobs == 25
 
-    async def test_patch_cluster_user_balance(
-        self, mock_admin_server: AdminServer
-    ) -> None:
+    async def test_patch_org_user_balance(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.orgs = [Org(name="org")]
         mock_admin_server.users = [
             User(
                 name="test1",
                 email="email",
             ),
         ]
-        mock_admin_server.clusters = [
-            Cluster(
-                name="cluster",
-                default_credits=None,
-                default_quota=Quota(),
-                default_role=ClusterUserRoleType.USER,
-            ),
-        ]
-        mock_admin_server.cluster_users = [
-            ClusterUser(
+        mock_admin_server.org_users = [
+            OrgUser(
+                org_name="org",
                 user_name="test1",
-                cluster_name="cluster",
-                org_name=None,
-                balance=Balance(credits=Decimal(10)),
-                quota=Quota(),
-                role=ClusterUserRoleType.USER,
+                balance=Balance(),
+                role=OrgUserRoleType.USER,
             ),
         ]
 
         async with AdminClient(base_url=mock_admin_server.url) as client:
-            cluster_user = await client.update_cluster_user_balance(
-                cluster_name="cluster", user_name="test1", credits=Decimal(15)
+            org_user = await client.update_org_user_balance(
+                org_name="org", user_name="test1", credits=Decimal(15)
             )
-            assert cluster_user.balance.credits == Decimal(15)
+            assert org_user.balance.credits == Decimal(15)
 
-            cluster_user = await client.update_cluster_user_balance_by_delta(
-                cluster_name="cluster", user_name="test1", delta=Decimal(10)
+            org_user = await client.update_org_user_balance_by_delta(
+                org_name="org", user_name="test1", delta=Decimal(10)
             )
-            assert cluster_user.balance.credits == Decimal(25)
+            assert org_user.balance.credits == Decimal(25)
 
     async def test_org_cluster_add_spending(
         self, mock_admin_server: AdminServer
@@ -1291,37 +1267,30 @@ class TestAdminClient:
             assert org_cluster.balance.credits == Decimal(-5)
             assert org_cluster.balance.spent_credits == Decimal(15)
 
-    async def test_cluster_user_add_spending(
-        self, mock_admin_server: AdminServer
-    ) -> None:
+    async def test_org_user_add_spending(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.users = [
             User(
                 name="test1",
                 email="email",
             ),
         ]
-        mock_admin_server.clusters = [
-            Cluster(
-                name="cluster",
-                default_credits=None,
-                default_quota=Quota(),
-                default_role=ClusterUserRoleType.USER,
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
             ),
         ]
-        mock_admin_server.cluster_users = [
-            ClusterUser(
+        mock_admin_server.org_users = [
+            OrgUser(
+                org_name="org",
                 user_name="test1",
-                cluster_name="cluster",
-                org_name=None,
                 balance=Balance(credits=Decimal(10)),
-                quota=Quota(),
-                role=ClusterUserRoleType.USER,
+                role=OrgUserRoleType.USER,
             ),
         ]
 
         async with AdminClient(base_url=mock_admin_server.url) as client:
-            cluster_user = await client.charge_cluster_user(
-                cluster_name="cluster", user_name="test1", amount=Decimal(15)
+            cluster_user = await client.charge_org_user(
+                org_name="org", user_name="test1", amount=Decimal(15)
             )
             assert cluster_user.balance.credits == Decimal(-5)
             assert cluster_user.balance.spent_credits == Decimal(15)
@@ -1387,7 +1356,6 @@ class TestAdminClient:
                 user_name="test1",
                 cluster_name="cluster",
                 org_name="org",
-                balance=Balance(),
                 quota=Quota(total_running_jobs=10),
                 role=ClusterUserRoleType.USER,
             ),
@@ -1410,7 +1378,7 @@ class TestAdminClient:
             )
             assert cluster_user.quota.total_running_jobs == 25
 
-    async def test_patch_cluster_user_with_org_balance(
+    async def test_patch_org_user_with_org_balance(
         self, mock_admin_server: AdminServer
     ) -> None:
         mock_admin_server.users = [
@@ -1419,89 +1387,34 @@ class TestAdminClient:
                 email="email",
             ),
         ]
-        mock_admin_server.clusters = [
-            Cluster(
-                name="cluster",
-                default_credits=None,
-                default_quota=Quota(),
-                default_role=ClusterUserRoleType.USER,
-            ),
-        ]
         mock_admin_server.orgs = [
             Org(
                 name="org",
             ),
         ]
-        mock_admin_server.cluster_users = [
-            ClusterUser(
+        mock_admin_server.org_users = [
+            OrgUser(
                 user_name="test1",
-                cluster_name="cluster",
                 org_name="org",
                 balance=Balance(credits=Decimal(10)),
-                quota=Quota(),
-                role=ClusterUserRoleType.USER,
+                role=OrgUserRoleType.USER,
             ),
         ]
 
         async with AdminClient(base_url=mock_admin_server.url) as client:
-            cluster_user = await client.update_cluster_user_balance(
-                cluster_name="cluster",
+            org_user = await client.update_org_user_balance(
                 user_name="test1",
                 org_name="org",
                 credits=Decimal(15),
             )
-            assert cluster_user.balance.credits == Decimal(15)
+            assert org_user.balance.credits == Decimal(15)
 
-            cluster_user = await client.update_cluster_user_balance_by_delta(
-                cluster_name="cluster",
+            org_user = await client.update_org_user_balance_by_delta(
                 user_name="test1",
                 org_name="org",
                 delta=Decimal(10),
             )
-            assert cluster_user.balance.credits == Decimal(25)
-
-    async def test_cluster_user_with_org_add_spending(
-        self, mock_admin_server: AdminServer
-    ) -> None:
-        mock_admin_server.users = [
-            User(
-                name="test1",
-                email="email",
-            ),
-        ]
-        mock_admin_server.clusters = [
-            Cluster(
-                name="cluster",
-                default_credits=None,
-                default_quota=Quota(),
-                default_role=ClusterUserRoleType.USER,
-            ),
-        ]
-        mock_admin_server.orgs = [
-            Org(
-                name="org",
-            ),
-        ]
-        mock_admin_server.cluster_users = [
-            ClusterUser(
-                user_name="test1",
-                cluster_name="cluster",
-                org_name="org",
-                balance=Balance(credits=Decimal(10)),
-                quota=Quota(),
-                role=ClusterUserRoleType.USER,
-            ),
-        ]
-
-        async with AdminClient(base_url=mock_admin_server.url) as client:
-            cluster_user = await client.charge_cluster_user(
-                cluster_name="cluster",
-                user_name="test1",
-                org_name="org",
-                amount=Decimal(15),
-            )
-            assert cluster_user.balance.credits == Decimal(-5)
-            assert cluster_user.balance.spent_credits == Decimal(15)
+            assert org_user.balance.credits == Decimal(25)
 
     async def test_cluster_user_add_debt(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.clusters = [
