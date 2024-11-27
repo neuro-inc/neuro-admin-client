@@ -155,15 +155,20 @@ class AdminServer:
         }
         if org.balance.credits is not None:
             res["balance"]["credits"] = str(org.balance.credits)
-
+        if org.user_default_credits:
+            res["user_default_credits"] = str(org.user_default_credits)
         return res
 
     async def handle_org_post(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
         payload = await request.json()
+        user_default_credits_raw = payload.get("user_default_credits")
         new_org = Org(
             name=payload["name"],
+            user_default_credits=(
+                Decimal(user_default_credits_raw) if user_default_credits_raw else None
+            ),
         )
         self.orgs.append(new_org)
         self.last_skip_auto_add_to_clusters = _parse_bool(
@@ -236,6 +241,27 @@ class AdminServer:
                 if balance.credits:
                     balance = replace(balance, credits=balance.credits - spending)
                 org = replace(org, balance=balance)
+                self.orgs[index] = org
+                return aiohttp.web.json_response(self._serialize_org(org))
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_org_patch_defaults(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org in enumerate(self.orgs):
+            if org.name == org_name:
+                user_default_credits_raw = payload.get("credits")
+                org = replace(
+                    org,
+                    user_default_credits=(
+                        Decimal(user_default_credits_raw)
+                        if user_default_credits_raw
+                        else None
+                    ),
+                )
                 self.orgs[index] = org
                 return aiohttp.web.json_response(self._serialize_org(org))
         raise aiohttp.web.HTTPNotFound
@@ -1247,6 +1273,10 @@ async def mock_admin_server(
                 aiohttp.web.post(
                     "/api/v1/orgs/{oname}/spending",
                     admin_server.handle_org_add_spending,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/orgs/{oname}/defaults",
+                    admin_server.handle_org_patch_defaults,
                 ),
                 aiohttp.web.get(
                     "/api/v1/clusters",

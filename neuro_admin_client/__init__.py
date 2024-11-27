@@ -430,6 +430,7 @@ class AdminClientABC(abc.ABC):
         self,
         name: str,
         skip_auto_add_to_clusters: bool = False,
+        user_default_credits: Decimal | None = None,
     ) -> Org: ...
 
     @abstractmethod
@@ -460,6 +461,13 @@ class AdminClientABC(abc.ABC):
         delta: Decimal,
         *,
         idempotency_key: str | None = None,
+    ) -> Org: ...
+
+    @abstractmethod
+    async def update_org_defaults(
+        self,
+        org_name: str,
+        user_default_credits: Decimal,
     ) -> Org: ...
 
     #  org user
@@ -1690,6 +1698,11 @@ class AdminClientBase:
         return Org(
             name=payload["name"],
             balance=self._parse_balance(payload.get("balance")),
+            user_default_credits=(
+                Decimal(payload["user_default_credits"])
+                if payload.get("user_default_credits")
+                else None
+            ),
         )
 
     async def list_orgs(self) -> list[Org]:
@@ -1709,10 +1722,13 @@ class AdminClientBase:
         self,
         name: str,
         skip_auto_add_to_clusters: bool = False,
+        user_default_credits: Decimal | None = None,
     ) -> Org:
         payload = {
             "name": name,
         }
+        if user_default_credits:
+            payload["user_default_credits"] = str(user_default_credits)
         async with self._request(
             "POST",
             "orgs",
@@ -1792,6 +1808,21 @@ class AdminClientBase:
             f"orgs/{org_name}/balance",
             json=payload,
             params=params,
+        ) as resp:
+            resp.raise_for_status()
+            raw_org = await resp.json()
+            return self._parse_org_payload(raw_org)
+
+    async def update_org_defaults(
+        self,
+        org_name: str,
+        user_default_credits: Decimal,
+    ) -> Org:
+        payload: dict[str, str] = {"credits": str(user_default_credits)}
+        async with self._request(
+            "PATCH",
+            f"orgs/{org_name}/defaults",
+            json=payload,
         ) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
@@ -2536,7 +2567,7 @@ class AdminClientDummy(AdminClientABC):
         org_name=None,
         user_info=UserInfo(email="email@examle.com"),
     )
-    DUMMY_ORG = Org(name="org", balance=Balance())
+    DUMMY_ORG = Org(name="org", balance=Balance(), user_default_credits=None)
     DUMMY_ORG_CLUSTER = OrgCluster(
         org_name="org",
         cluster_name="default",
@@ -2960,6 +2991,7 @@ class AdminClientDummy(AdminClientABC):
         self,
         name: str,
         skip_auto_add_to_clusters: bool = False,
+        user_default_credits: Decimal | None = None,
     ) -> Org:
         return self.DUMMY_ORG
 
@@ -2990,6 +3022,13 @@ class AdminClientDummy(AdminClientABC):
         delta: Decimal,
         *,
         idempotency_key: str | None = None,
+    ) -> Org:
+        return self.DUMMY_ORG
+
+    async def update_org_defaults(
+        self,
+        org_name: str,
+        default_credits: Decimal,
     ) -> Org:
         return self.DUMMY_ORG
 

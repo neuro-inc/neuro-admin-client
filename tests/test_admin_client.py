@@ -278,6 +278,35 @@ class TestAdminClient:
 
             assert not mock_admin_server.last_skip_auto_add_to_clusters
 
+    async def test_create_org_with_defaults(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            res_org = await client.create_org(
+                name="test_org", user_default_credits=Decimal("100.11")
+            )
+
+        assert res_org.name == "test_org"
+        assert res_org.user_default_credits == Decimal("100.11")
+
+        assert mock_admin_server.orgs == [res_org]
+
+    async def test_patch_org_defaults(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+                user_default_credits=Decimal(100),
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org = await client.update_org_defaults(
+                org_name="org",
+                user_default_credits=Decimal(200),
+            )
+            assert org.user_default_credits == Decimal(200)
+            assert org == mock_admin_server.orgs[0]
+
     async def test_list_orgs(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.orgs = [
             Org(

@@ -79,6 +79,7 @@ class Cluster:
 class Org:
     name: str
     balance: Balance = Balance()
+    user_default_credits: Optional[Decimal] = None
 
 
 @unique
