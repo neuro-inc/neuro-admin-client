@@ -850,6 +850,7 @@ class AdminClientBase:
             user_name=user_name,
             role=ClusterUserRoleType(payload["role"]),
             quota=self._parse_quota(payload.get("quota")),
+            balance=self._parse_balance(payload.get("balance")),
             org_name=payload.get("org_name"),
             cluster_name=payload["cluster_name"],
         )
@@ -1109,6 +1110,7 @@ class AdminClientBase:
             user_name=payload["user_name"],
             role=role,
             quota=self._parse_quota(payload.get("quota")),
+            balance=self._parse_balance(payload.get("balance")),
             org_name=payload.get("org_name"),
             cluster_name=cluster_name,
         )
@@ -1921,7 +1923,7 @@ class AdminClientBase:
             "user_name": user_name,
             "role": role.value,
         }
-        if balance:
+        if balance is not None:
             payload["balance"] = self._balance_to_payload(balance)
 
         async with self._request(
@@ -2564,6 +2566,7 @@ class AdminClientDummy(AdminClientABC):
         user_name="user",
         role=ClusterUserRoleType.ADMIN,
         quota=Quota(),
+        balance=Balance(),
         org_name=None,
         user_info=UserInfo(email="email@examle.com"),
     )

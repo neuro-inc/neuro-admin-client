@@ -378,11 +378,16 @@ class AdminServer:
             "user_name": cluster_user.user_name,
             "org_name": cluster_user.org_name,
             "quota": {},
+            "balance": {
+                "spent_credits": str(cluster_user.balance.spent_credits),
+            },
         }
         if cluster_user.role:
             res["role"] = cluster_user.role.value
         if cluster_user.quota.total_running_jobs is not None:
             res["quota"]["total_running_jobs"] = cluster_user.quota.total_running_jobs
+        if cluster_user.balance.credits is not None:
+            res["balance"]["credits"] = str(cluster_user.balance.credits)
         if with_info:
             user = next(
                 user for user in self.users if user.name == cluster_user.user_name
@@ -401,6 +406,7 @@ class AdminServer:
             user_name=payload["user_name"],
             role=ClusterUserRoleType(payload["role"]),
             org_name=payload.get("org_name"),
+            balance=Balance(),
             quota=Quota(total_running_jobs=payload["quota"].get("total_running_jobs")),
         )
         self.cluster_users.append(new_cluster_user)
@@ -418,6 +424,8 @@ class AdminServer:
         user_name = request.match_info["uname"]
         org_name = request.match_info.get("oname")
         payload = await request.json()
+        credits_raw = payload.get("balance", {}).get("credits")
+        spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
 
         assert user_name == payload["user_name"]
         assert org_name == payload.get("org_name")
@@ -428,6 +436,12 @@ class AdminServer:
             role=ClusterUserRoleType(payload["role"]),
             org_name=payload.get("org_name"),
             quota=Quota(total_running_jobs=payload["quota"].get("total_running_jobs")),
+            balance=Balance(
+                credits=Decimal(credits_raw) if credits_raw else None,
+                spent_credits=(
+                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
+                ),
+            ),
         )
         assert new_cluster_user.user_name == user_name
         self.cluster_users = [

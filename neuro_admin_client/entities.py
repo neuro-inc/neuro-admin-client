@@ -136,6 +136,7 @@ class ClusterUser:
     user_name: str
     role: Optional[ClusterUserRoleType]
     quota: Quota
+    balance: Balance
     org_name: Optional[str]
 
     def add_info(self, user_info: UserInfo) -> "ClusterUserWithInfo":
@@ -144,6 +145,7 @@ class ClusterUser:
             user_name=self.user_name,
             role=self.role,
             quota=self.quota,
+            balance=self.balance,
             org_name=self.org_name,
             user_info=user_info,
         )
