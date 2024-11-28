@@ -79,6 +79,7 @@ class Cluster:
 class Org:
     name: str
     balance: Balance = Balance()
+    user_default_credits: Optional[Decimal] = None
 
 
 @unique
@@ -99,12 +100,14 @@ class OrgUser:
     org_name: str
     user_name: str
     role: OrgUserRoleType
+    balance: Balance
 
     def add_info(self, user_info: UserInfo) -> "OrgUserWithInfo":
         return OrgUserWithInfo(
             user_name=self.user_name,
             role=self.role,
             org_name=self.org_name,
+            balance=self.balance,
             user_info=user_info,
         )
 

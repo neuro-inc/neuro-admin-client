@@ -155,15 +155,20 @@ class AdminServer:
         }
         if org.balance.credits is not None:
             res["balance"]["credits"] = str(org.balance.credits)
-
+        if org.user_default_credits:
+            res["user_default_credits"] = str(org.user_default_credits)
         return res
 
     async def handle_org_post(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
         payload = await request.json()
+        user_default_credits_raw = payload.get("user_default_credits")
         new_org = Org(
             name=payload["name"],
+            user_default_credits=(
+                Decimal(user_default_credits_raw) if user_default_credits_raw else None
+            ),
         )
         self.orgs.append(new_org)
         self.last_skip_auto_add_to_clusters = _parse_bool(
@@ -236,6 +241,27 @@ class AdminServer:
                 if balance.credits:
                     balance = replace(balance, credits=balance.credits - spending)
                 org = replace(org, balance=balance)
+                self.orgs[index] = org
+                return aiohttp.web.json_response(self._serialize_org(org))
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_org_patch_defaults(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+
+        for index, org in enumerate(self.orgs):
+            if org.name == org_name:
+                user_default_credits_raw = payload.get("credits")
+                org = replace(
+                    org,
+                    user_default_credits=(
+                        Decimal(user_default_credits_raw)
+                        if user_default_credits_raw
+                        else None
+                    ),
+                )
                 self.orgs[index] = org
                 return aiohttp.web.json_response(self._serialize_org(org))
         raise aiohttp.web.HTTPNotFound
@@ -375,20 +401,13 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         cluster_name = request.match_info["cname"]
         payload = await request.json()
-        credits_raw = payload["balance"].get("credits")
-        spend_credits_raw = payload["balance"].get("spend_credits_raw")
         new_cluster_user = ClusterUser(
             cluster_name=cluster_name,
             user_name=payload["user_name"],
             role=ClusterUserRoleType(payload["role"]),
             org_name=payload.get("org_name"),
+            balance=Balance(),
             quota=Quota(total_running_jobs=payload["quota"].get("total_running_jobs")),
-            balance=Balance(
-                credits=Decimal(credits_raw) if credits_raw else None,
-                spent_credits=(
-                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
-                ),
-            ),
         )
         self.cluster_users.append(new_cluster_user)
         return aiohttp.web.json_response(
@@ -405,8 +424,8 @@ class AdminServer:
         user_name = request.match_info["uname"]
         org_name = request.match_info.get("oname")
         payload = await request.json()
-        credits_raw = payload["balance"].get("credits")
-        spend_credits_raw = payload["balance"].get("spend_credits_raw")
+        credits_raw = payload.get("balance", {}).get("credits")
+        spend_credits_raw = payload.get("balance", {}).get("spend_credits_raw")
 
         assert user_name == payload["user_name"]
         assert org_name == payload.get("org_name")
@@ -479,20 +498,15 @@ class AdminServer:
                 )
         raise aiohttp.web.HTTPNotFound
 
-    async def handle_cluster_user_patch_balance(
+    async def handle_org_user_patch_balance(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
-        cluster_name = request.match_info["cname"]
+        org_name = request.match_info["oname"]
         user_name = request.match_info["uname"]
-        org_name = request.match_info.get("oname")
         payload = await request.json()
 
-        for index, user in enumerate(self.cluster_users):
-            if (
-                user.cluster_name == cluster_name
-                and user.user_name == user_name
-                and user.org_name == org_name
-            ):
+        for index, user in enumerate(self.org_users):
+            if user.user_name == user_name and user.org_name == org_name:
                 balance = user.balance
                 if "credits" in payload:
                     credits = (
@@ -505,9 +519,9 @@ class AdminServer:
                         balance, credits=balance.credits + additional_credits
                     )
                 user = replace(user, balance=balance)
-                self.cluster_users[index] = user
+                self.org_users[index] = user
                 return aiohttp.web.json_response(
-                    self._serialize_cluster_user(
+                    self._serialize_org_user(
                         user,
                         _parse_bool(request.query.get("with_user_info", "false")),
                     )
@@ -540,20 +554,15 @@ class AdminServer:
                 )
         raise aiohttp.web.HTTPNotFound
 
-    async def handle_cluster_user_add_spending(
+    async def handle_org_user_add_spending(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
-        cluster_name = request.match_info["cname"]
+        org_name = request.match_info["oname"]
         user_name = request.match_info["uname"]
-        org_name = request.match_info.get("oname")
         payload = await request.json()
 
-        for index, user in enumerate(self.cluster_users):
-            if (
-                user.cluster_name == cluster_name
-                and user.user_name == user_name
-                and user.org_name == org_name
-            ):
+        for index, user in enumerate(self.org_users):
+            if user.user_name == user_name and user.org_name == org_name:
                 balance = user.balance
                 spending = Decimal(payload["spending"])
                 balance = replace(
@@ -562,9 +571,9 @@ class AdminServer:
                 if balance.credits:
                     balance = replace(balance, credits=balance.credits - spending)
                 user = replace(user, balance=balance)
-                self.cluster_users[index] = user
+                self.org_users[index] = user
                 return aiohttp.web.json_response(
-                    self._serialize_cluster_user(
+                    self._serialize_org_user(
                         user,
                         _parse_bool(request.query.get("with_user_info", "false")),
                     )
@@ -644,7 +653,12 @@ class AdminServer:
             "user_name": org_user.user_name,
             "role": org_user.role.value,
             "org_name": org_user.org_name,
+            "balance": {
+                "spent_credits": str(org_user.balance.spent_credits),
+            },
         }
+        if org_user.balance.credits is not None:
+            res["balance"]["credits"] = str(org_user.balance.credits)
         if with_info:
             user = next(user for user in self.users if user.name == org_user.user_name)
             res["user_info"] = self._serialize_user(user)
@@ -656,10 +670,18 @@ class AdminServer:
     ) -> aiohttp.web.Response:
         org_name = request.match_info["oname"]
         payload = await request.json()
+        credits_raw = payload["balance"].get("credits")
+        spend_credits_raw = payload["balance"].get("spend_credits_raw")
         new_org_user = OrgUser(
             org_name=org_name,
             user_name=payload["user_name"],
             role=OrgUserRoleType(payload["role"]),
+            balance=Balance(
+                credits=Decimal(credits_raw) if credits_raw else None,
+                spent_credits=(
+                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
+                ),
+            ),
         )
         self.org_users.append(new_org_user)
         return aiohttp.web.json_response(
@@ -675,10 +697,18 @@ class AdminServer:
         org_name = request.match_info["oname"]
         user_name = request.match_info["uname"]
         payload = await request.json()
+        credits_raw = payload["balance"].get("credits")
+        spend_credits_raw = payload["balance"].get("spend_credits_raw")
         new_org_user = OrgUser(
             org_name=org_name,
             user_name=payload["user_name"],
             role=OrgUserRoleType(payload["role"]),
+            balance=Balance(
+                credits=Decimal(credits_raw) if credits_raw else None,
+                spent_credits=(
+                    Decimal(spend_credits_raw) if spend_credits_raw else Decimal(0)
+                ),
+            ),
         )
         assert new_org_user.user_name == user_name
         self.org_users = [
@@ -1258,6 +1288,10 @@ async def mock_admin_server(
                     "/api/v1/orgs/{oname}/spending",
                     admin_server.handle_org_add_spending,
                 ),
+                aiohttp.web.patch(
+                    "/api/v1/orgs/{oname}/defaults",
+                    admin_server.handle_org_patch_defaults,
+                ),
                 aiohttp.web.get(
                     "/api/v1/clusters",
                     admin_server.handle_cluster_list,
@@ -1299,16 +1333,8 @@ async def mock_admin_server(
                     admin_server.handle_cluster_user_delete,
                 ),
                 aiohttp.web.patch(
-                    "/api/v1/clusters/{cname}/users/{uname}/balance",
-                    admin_server.handle_cluster_user_patch_balance,
-                ),
-                aiohttp.web.patch(
                     "/api/v1/clusters/{cname}/users/{uname}/quota",
                     admin_server.handle_cluster_user_patch_quota,
-                ),
-                aiohttp.web.post(
-                    "/api/v1/clusters/{cname}/users/{uname}/spending",
-                    admin_server.handle_cluster_user_add_spending,
                 ),
                 aiohttp.web.post(
                     "/api/v1/clusters/{cname}/debts",
@@ -1333,6 +1359,14 @@ async def mock_admin_server(
                 aiohttp.web.delete(
                     "/api/v1/orgs/{oname}/users/{uname}",
                     admin_server.handle_org_user_delete,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/orgs/{oname}/users/{uname}/balance",
+                    admin_server.handle_org_user_patch_balance,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/orgs/{oname}/users/{uname}/spending",
+                    admin_server.handle_org_user_add_spending,
                 ),
                 aiohttp.web.post(
                     "/api/v1/clusters/{cname}/orgs",
@@ -1376,16 +1410,8 @@ async def mock_admin_server(
                     admin_server.handle_cluster_user_delete,
                 ),
                 aiohttp.web.patch(
-                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/balance",
-                    admin_server.handle_cluster_user_patch_balance,
-                ),
-                aiohttp.web.patch(
                     "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/quota",
                     admin_server.handle_cluster_user_patch_quota,
-                ),
-                aiohttp.web.post(
-                    "/api/v1/clusters/{cname}/orgs/{oname}/users/{uname}/spending",
-                    admin_server.handle_cluster_user_add_spending,
                 ),
                 aiohttp.web.patch(
                     "/api/v1/clusters/{cname}/orgs/{oname}/defaults",
