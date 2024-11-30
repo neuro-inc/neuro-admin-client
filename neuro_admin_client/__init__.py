@@ -467,7 +467,7 @@ class AdminClientABC(abc.ABC):
     async def update_org_defaults(
         self,
         org_name: str,
-        user_default_credits: Decimal,
+        user_default_credits: Decimal | None,
     ) -> Org: ...
 
     #  org user
@@ -1818,9 +1818,12 @@ class AdminClientBase:
     async def update_org_defaults(
         self,
         org_name: str,
-        user_default_credits: Decimal,
+        user_default_credits: Decimal | None,
     ) -> Org:
-        payload: dict[str, str] = {"credits": str(user_default_credits)}
+        credits = (
+            str(user_default_credits) if user_default_credits is not None else None
+        )
+        payload: dict[str, str | None] = {"credits": credits}
         async with self._request(
             "PATCH",
             f"orgs/{org_name}/defaults",
@@ -3031,7 +3034,7 @@ class AdminClientDummy(AdminClientABC):
     async def update_org_defaults(
         self,
         org_name: str,
-        default_credits: Decimal,
+        default_credits: Decimal | None,
     ) -> Org:
         return self.DUMMY_ORG
 

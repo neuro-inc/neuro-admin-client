@@ -311,6 +311,14 @@ class TestAdminClient:
             assert org.user_default_credits == Decimal(200)
             assert org == mock_admin_server.orgs[0]
 
+            # set defaults to `None`
+            org = await client.update_org_defaults(
+                org_name="org",
+                user_default_credits=None,
+            )
+            assert org.user_default_credits is None
+            assert org == mock_admin_server.orgs[0]
+
     async def test_list_orgs(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.orgs = [
             Org(
