@@ -207,6 +207,7 @@ class AdminClientABC(abc.ABC):
         *,
         with_user_info: Literal[True],
         quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo: ...
 
@@ -219,6 +220,7 @@ class AdminClientABC(abc.ABC):
         *,
         with_user_info: Literal[False] = ...,
         quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser: ...
 
@@ -230,6 +232,7 @@ class AdminClientABC(abc.ABC):
         role: ClusterUserRoleType,
         *,
         quota: Quota | None = None,
+        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo: ...
@@ -1219,6 +1222,7 @@ class AdminClientBase:
         *,
         with_user_info: Literal[True],
         quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo: ...
 
@@ -1231,6 +1235,7 @@ class AdminClientBase:
         *,
         with_user_info: Literal[False] = ...,
         quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser: ...
 
@@ -1241,6 +1246,7 @@ class AdminClientBase:
         role: ClusterUserRoleType,
         *,
         quota: Quota | None = None,
+        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
@@ -2775,6 +2781,7 @@ class AdminClientDummy(AdminClientABC):
         *,
         with_user_info: Literal[True],
         quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUserWithInfo: ...
 
@@ -2787,6 +2794,7 @@ class AdminClientDummy(AdminClientABC):
         *,
         with_user_info: Literal[False] = ...,
         quota: Quota | None = None,
+        balance: Balance | None = None,
         org_name: str | None = None,
     ) -> ClusterUser: ...
 
@@ -2797,6 +2805,7 @@ class AdminClientDummy(AdminClientABC):
         role: ClusterUserRoleType,
         *,
         quota: Quota | None = None,
+        balance: Balance | None = None,
         with_user_info: bool = False,
         org_name: str | None = None,
     ) -> ClusterUser | ClusterUserWithInfo:
