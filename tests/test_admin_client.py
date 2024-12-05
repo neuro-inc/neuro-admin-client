@@ -958,6 +958,56 @@ class TestAdminClient:
         assert len(org_users) == 2
         assert set(org_users) == set(mock_admin_server.org_users)
 
+    @pytest.mark.parametrize(
+        ("roles", "expected_count"),
+        [
+            ([OrgUserRoleType.USER], 1),
+            ([OrgUserRoleType.MANAGER], 1),
+            ([OrgUserRoleType.ADMIN], 1),
+            ([OrgUserRoleType.USER, OrgUserRoleType.ADMIN], 2),
+            ([OrgUserRoleType.USER, OrgUserRoleType.MANAGER], 2),
+            ([OrgUserRoleType.MANAGER, OrgUserRoleType.ADMIN], 2),
+            ([OrgUserRoleType.USER, OrgUserRoleType.MANAGER, OrgUserRoleType.ADMIN], 3),
+        ],
+    )
+    async def test_list_orgs_user_roles_filter(
+        self,
+        roles: list[OrgUserRoleType],
+        expected_count: int,
+        mock_admin_server: AdminServer,
+    ) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+            ),
+        ]
+
+        # cleanup of internal data
+        mock_admin_server.users, mock_admin_server.org_users = [], []
+
+        # prefill both users and org users
+        for user_name, role in (
+            ("test1", OrgUserRoleType.USER),
+            ("test2", OrgUserRoleType.MANAGER),
+            ("test3", OrgUserRoleType.ADMIN),
+        ):
+            mock_admin_server.users.append(
+                User(name=user_name, email=f"{user_name}@email.com")
+            )
+            mock_admin_server.org_users.append(
+                OrgUser(
+                    user_name=user_name, org_name="org", role=role, balance=Balance()
+                )
+            )
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org_users = await client.list_org_users("org", roles=roles)
+
+        assert len(org_users) == expected_count
+        actual_roles = {ou.role for ou in org_users}
+        expected_roles = {r.value for r in roles}
+        assert actual_roles == expected_roles
+
     async def test_get_org_user(self, mock_admin_server: AdminServer) -> None:
         mock_admin_server.users = [
             User(
