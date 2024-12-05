@@ -477,17 +477,26 @@ class AdminClientABC(abc.ABC):
 
     @overload
     async def list_org_users(
-        self, org_name: str, with_user_info: Literal[True]
+        self,
+        org_name: str,
+        with_user_info: Literal[True],
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUserWithInfo]: ...
 
     @overload
     async def list_org_users(
-        self, org_name: str, with_user_info: Literal[False] = ...
+        self,
+        org_name: str,
+        with_user_info: Literal[False] = ...,
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUser]: ...
 
     @abstractmethod
     async def list_org_users(
-        self, org_name: str, with_user_info: bool = False
+        self,
+        org_name: str,
+        with_user_info: bool = False,
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUser] | list[OrgUserWithInfo]: ...
 
     @overload
@@ -813,7 +822,7 @@ class AdminClientBase:
         path: str,
         *,
         json: dict[str, Any] | None = None,
-        params: Sequence[tuple[str, str]] | Mapping[str, str] | None = None,
+        params: Sequence[tuple[str, str]] | Mapping[str, str | list[str]] | None = None,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         pass
 
@@ -1857,21 +1866,36 @@ class AdminClientBase:
 
     @overload
     async def list_org_users(
-        self, org_name: str, with_user_info: Literal[True]
+        self,
+        org_name: str,
+        with_user_info: Literal[True],
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUserWithInfo]: ...
 
     @overload
     async def list_org_users(
-        self, org_name: str, with_user_info: Literal[False] = ...
+        self,
+        org_name: str,
+        with_user_info: Literal[False] = ...,
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUser]: ...
 
     async def list_org_users(
-        self, org_name: str, with_user_info: bool = False
+        self,
+        org_name: str,
+        with_user_info: bool = False,
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUser] | list[OrgUserWithInfo]:
+        params: dict[str, str | list[str]] = {
+            "with_user_info": _to_query_bool(with_user_info)
+        }
+        if roles:
+            params["roles"] = list({role.value for role in roles})
+
         async with self._request(
             "GET",
             f"orgs/{org_name}/users",
-            params={"with_user_info": _to_query_bool(with_user_info)},
+            params=params,
         ) as resp:
             resp.raise_for_status()
             orgs_raw = await resp.json()
@@ -2546,7 +2570,7 @@ class AdminClient(AdminClientBase, AdminClientABC):
         method: str,
         path: str,
         *,
-        params: Sequence[tuple[str, str]] | Mapping[str, str] | None = None,
+        params: Sequence[tuple[str, str]] | Mapping[str, str | list[str]] | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         assert self._client
@@ -3051,16 +3075,25 @@ class AdminClientDummy(AdminClientABC):
 
     @overload
     async def list_org_users(
-        self, org_name: str, with_user_info: Literal[True]
+        self,
+        org_name: str,
+        with_user_info: Literal[True],
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUserWithInfo]: ...
 
     @overload
     async def list_org_users(
-        self, org_name: str, with_user_info: Literal[False] = ...
+        self,
+        org_name: str,
+        with_user_info: Literal[False] = ...,
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUser]: ...
 
     async def list_org_users(
-        self, org_name: str, with_user_info: bool = False
+        self,
+        org_name: str,
+        with_user_info: bool = False,
+        roles: list[OrgUserRoleType] | None = None,
     ) -> list[OrgUser] | list[OrgUserWithInfo]:
         return [self.DUMMY_ORG_USER]
 

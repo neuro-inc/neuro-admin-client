@@ -754,12 +754,13 @@ class AdminServer:
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
         org_name = request.match_info["oname"]
+        roles = {OrgUserRoleType(r) for r in request.query.getall("roles", [])}
         resp = [
             self._serialize_org_user(
                 org_user, _parse_bool(request.query.get("with_user_info", "false"))
             )
             for org_user in self.org_users
-            if org_user.org_name == org_name
+            if org_user.org_name == org_name and (not roles or org_user.role in roles)
         ]
         return aiohttp.web.json_response(resp)
 
