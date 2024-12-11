@@ -12,7 +12,7 @@ from typing import Any, List, Tuple, Union, overload
 import aiohttp
 from multidict import CIMultiDict
 from typing_extensions import Literal
-from yarl import URL
+from yarl import URL, Query
 
 from neuro_admin_client.entities import (
     Balance,
@@ -822,7 +822,7 @@ class AdminClientBase:
         path: str,
         *,
         json: dict[str, Any] | None = None,
-        params: Sequence[tuple[str, str]] | Mapping[str, str | list[str]] | None = None,
+        params: Query | None = None,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         pass
 
@@ -2570,7 +2570,7 @@ class AdminClient(AdminClientBase, AdminClientABC):
         method: str,
         path: str,
         *,
-        params: Sequence[tuple[str, str]] | Mapping[str, str | list[str]] | None = None,
+        params: Query | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         assert self._client
