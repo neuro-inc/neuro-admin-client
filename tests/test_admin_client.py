@@ -972,7 +972,7 @@ class TestAdminClient:
     )
     async def test_list_orgs_user_roles_filter(
         self,
-        roles: list[OrgUserRoleType],
+        roles: t.List[OrgUserRoleType],
         expected_count: int,
         mock_admin_server: AdminServer,
     ) -> None:
