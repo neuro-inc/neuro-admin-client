@@ -157,6 +157,10 @@ class AdminServer:
             res["balance"]["credits"] = str(org.balance.credits)
         if org.user_default_credits:
             res["user_default_credits"] = str(org.user_default_credits)
+        if org.notification_balance_depletion_seconds:
+            res["notification_balance_depletion_seconds"] = (
+                org.notification_balance_depletion_seconds
+            )
         return res
 
     async def handle_org_post(
@@ -262,6 +266,14 @@ class AdminServer:
                         else None
                     ),
                 )
+                notification_balance_depletion_seconds = payload.get(
+                    "notification_balance_depletion_seconds"
+                )
+                if notification_balance_depletion_seconds:
+                    org = replace(
+                        org,
+                        notification_balance_depletion_seconds=notification_balance_depletion_seconds,
+                    )
                 self.orgs[index] = org
                 return aiohttp.web.json_response(self._serialize_org(org))
         raise aiohttp.web.HTTPNotFound
@@ -1288,6 +1300,10 @@ async def mock_admin_server(
                 aiohttp.web.post(
                     "/api/v1/orgs/{oname}/spending",
                     admin_server.handle_org_add_spending,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/orgs/{oname}",
+                    admin_server.handle_org_patch_defaults,
                 ),
                 aiohttp.web.patch(
                     "/api/v1/orgs/{oname}/defaults",
