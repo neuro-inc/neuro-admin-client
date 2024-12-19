@@ -80,6 +80,7 @@ class Org:
     name: str
     balance: Balance = Balance()
     user_default_credits: Optional[Decimal] = None
+    notification_balance_depletion_seconds: Optional[int] = None
 
 
 @unique

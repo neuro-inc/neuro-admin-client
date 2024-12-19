@@ -282,6 +282,25 @@ class TestAdminClient:
 
             assert not mock_admin_server.last_skip_auto_add_to_clusters
 
+    async def test_patch_org(self, mock_admin_server: AdminServer) -> None:
+        mock_admin_server.orgs = [
+            Org(
+                name="org",
+                user_default_credits=Decimal(100),
+                notification_balance_depletion_seconds=60 * 60 * 24,
+            ),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            org = await client.update_org(
+                org_name="org",
+                user_default_credits=Decimal(200),
+                notification_balance_depletion_seconds=60 * 60 * 24 * 2,
+            )
+            assert org.user_default_credits == Decimal(200)
+            assert org.notification_balance_depletion_seconds == 60 * 60 * 24 * 2
+            assert org == mock_admin_server.orgs[0]
+
     async def test_create_org_with_defaults(
         self, mock_admin_server: AdminServer
     ) -> None:
