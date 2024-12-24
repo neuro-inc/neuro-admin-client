@@ -287,7 +287,7 @@ class TestAdminClient:
             Org(
                 name="org",
                 user_default_credits=Decimal(100),
-                notification_balance_depletion_seconds=60 * 60 * 24,
+                depletion_intervals=[60 * 60 * 24],
             ),
         ]
 
@@ -295,11 +295,12 @@ class TestAdminClient:
             org = await client.update_org(
                 org_name="org",
                 user_default_credits=Decimal(200),
-                notification_balance_depletion_seconds=60 * 60 * 24 * 2,
+                depletion_intervals=[60 * 60 * 24 * 2],
             )
             assert org.user_default_credits == Decimal(200)
-            assert org.notification_balance_depletion_seconds == 60 * 60 * 24 * 2
             assert org == mock_admin_server.orgs[0]
+            depletion_intervals = t.cast(t.List[int], org.depletion_intervals)
+            assert depletion_intervals[0] == 60 * 60 * 24 * 2
 
     async def test_create_org_with_defaults(
         self, mock_admin_server: AdminServer

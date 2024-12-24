@@ -157,10 +157,8 @@ class AdminServer:
             res["balance"]["credits"] = str(org.balance.credits)
         if org.user_default_credits:
             res["user_default_credits"] = str(org.user_default_credits)
-        if org.notification_balance_depletion_seconds:
-            res["notification_balance_depletion_seconds"] = (
-                org.notification_balance_depletion_seconds
-            )
+        if org.depletion_intervals:
+            res["depletion_intervals"] = org.depletion_intervals
         return res
 
     async def handle_org_post(
@@ -266,13 +264,11 @@ class AdminServer:
                         else None
                     ),
                 )
-                notification_balance_depletion_seconds = payload.get(
-                    "notification_balance_depletion_seconds"
-                )
-                if notification_balance_depletion_seconds:
+                depletion_intervals = payload.get("depletion_intervals")
+                if depletion_intervals:
                     org = replace(
                         org,
-                        notification_balance_depletion_seconds=notification_balance_depletion_seconds,
+                        depletion_intervals=depletion_intervals,
                     )
                 self.orgs[index] = org
                 return aiohttp.web.json_response(self._serialize_org(org))

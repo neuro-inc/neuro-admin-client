@@ -471,7 +471,7 @@ class AdminClientABC(abc.ABC):
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        depletion_intervals: list[int] | None = None,
     ) -> Org: ...
 
     @abstractmethod
@@ -479,7 +479,7 @@ class AdminClientABC(abc.ABC):
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        depletion_intervals: list[int] | None = None,
     ) -> Org: ...
 
     #  org user
@@ -1729,9 +1729,7 @@ class AdminClientBase:
                 if payload.get("user_default_credits")
                 else None
             ),
-            notification_balance_depletion_seconds=payload.get(
-                "notification_balance_depletion_seconds"
-            ),
+            depletion_intervals=payload.get("depletion_intervals"),
         )
 
     async def list_orgs(self) -> list[Org]:
@@ -1846,18 +1844,16 @@ class AdminClientBase:
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        depletion_intervals: list[int] | None = None,
     ) -> Org:
         credits = (
             str(user_default_credits) if user_default_credits is not None else None
         )
-        payload: dict[str, str | int | None] = {
+        payload: dict[str, str | list[int] | None] = {
             "credits": credits,
         }
-        if notification_balance_depletion_seconds is not None:
-            payload["notification_balance_depletion_seconds"] = (
-                notification_balance_depletion_seconds
-            )
+        if depletion_intervals is not None:
+            payload["depletion_intervals"] = depletion_intervals
 
         async with self._request(
             "PATCH",
@@ -1872,12 +1868,12 @@ class AdminClientBase:
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        depletion_intervals: list[int] | None = None,
     ) -> Org:
         return await self.update_org(
             org_name=org_name,
             user_default_credits=user_default_credits,
-            notification_balance_depletion_seconds=notification_balance_depletion_seconds,
+            depletion_intervals=depletion_intervals,
         )
 
     #  org user
@@ -2639,7 +2635,12 @@ class AdminClientDummy(AdminClientABC):
         name="org",
         balance=Balance(),
         user_default_credits=None,
-        notification_balance_depletion_seconds=60 * 60 * 24,
+        depletion_intervals=[
+            60 * 60 * 24 * 7,
+            60 * 60 * 24 * 3,
+            60 * 60 * 24 * 1,
+            60 * 60 * 24 * -1,
+        ],
     )
     DUMMY_ORG_CLUSTER = OrgCluster(
         org_name="org",
@@ -3105,7 +3106,7 @@ class AdminClientDummy(AdminClientABC):
         self,
         org_name: str,
         default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        depletion_intervals: list[int] | None = None,
     ) -> Org:
         return self.DUMMY_ORG
 
@@ -3113,12 +3114,12 @@ class AdminClientDummy(AdminClientABC):
         self,
         org_name: str,
         default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        depletion_intervals: list[int] | None = None,
     ) -> Org:
         return await self.update_org(
             org_name=org_name,
             default_credits=default_credits,
-            notification_balance_depletion_seconds=notification_balance_depletion_seconds,
+            depletion_intervals=depletion_intervals,
         )
 
     #  org user

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import Optional
+from typing import List, Optional
 
 
 class FullNameMixin:
@@ -80,7 +80,7 @@ class Org:
     name: str
     balance: Balance = Balance()
     user_default_credits: Optional[Decimal] = None
-    notification_balance_depletion_seconds: Optional[int] = None
+    depletion_intervals: Optional[List[int]] = None
 
 
 @unique
