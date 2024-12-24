@@ -480,7 +480,26 @@ class AdminClientABC(abc.ABC):
         org_name: str,
         user_default_credits: Decimal | None,
         depletion_intervals: list[int] | None = None,
-    ) -> Org: ...
+    ) -> Org:
+        """
+        Updates an organizations.
+        :param org_name:
+            Will be used to identify an org.
+            A name itself won't be updated
+        :param user_default_credits:
+            A decimal value which will be used as a default balance
+            for all the users created in the future.
+            Can be `None` to disable such functionality for the organization
+        :param depletion_intervals:
+            A list of integers, where each number represents a seconds-based interval,
+            at which the organization management team will receive a notifications:
+
+            >>> depletion_intervals = [86_400, 0]
+
+            The above definition means that balance-related notifications will
+            be dispatched 7 days prior to balance depletion, and exactly at
+            the moment when balance goes to a zero.
+        """
 
     #  org user
 
@@ -1846,6 +1865,7 @@ class AdminClientBase:
         user_default_credits: Decimal | None,
         depletion_intervals: list[int] | None = None,
     ) -> Org:
+        """d"""
         credits = (
             str(user_default_credits) if user_default_credits is not None else None
         )
