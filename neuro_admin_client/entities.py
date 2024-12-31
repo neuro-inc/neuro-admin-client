@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import Optional
+from typing import List, Optional
 
 
 class FullNameMixin:
@@ -77,17 +77,17 @@ class Cluster:
 
 @dataclass(frozen=True)
 class OrgNotificationIntervals:
-    balance_projection_seconds: Optional[list[int]]
+    balance_projection_seconds: Optional[List[int]]
     """How many seconds left till the balance reaches zero?
     A list of integers, where each number represents a seconds-based interval,
     at which the organization management team will receive a notification,
     if the projected usage will lead to a reaching of a zero-balance in that
     amount of seconds.
     """
-    balance_amount: Optional[list[int]]
+    balance_amount: Optional[List[int]]
     """What exact balance amounts should trigger a notification?
     """
-    negative_balance_seconds: Optional[list[int]]
+    negative_balance_seconds: Optional[List[int]]
     """If a balance is negative, when we should send a notification?
     e.g. 86_400 means 1 day after org reaches a zero balance.
     """
