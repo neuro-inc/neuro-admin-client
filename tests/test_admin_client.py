@@ -16,6 +16,7 @@ from neuro_admin_client import (
     GetUserResponse,
     Org,
     OrgCluster,
+    OrgNotificationIntervals,
     OrgUser,
     OrgUserRoleType,
     Project,
@@ -287,7 +288,11 @@ class TestAdminClient:
             Org(
                 name="org",
                 user_default_credits=Decimal(100),
-                depletion_intervals=[60 * 60 * 24],
+                notification_intervals=OrgNotificationIntervals(
+                    balance_projection_seconds=[60 * 60 * 24],
+                    balance_amount=None,
+                    negative_balance_seconds=None,
+                ),
             ),
         ]
 
@@ -295,12 +300,28 @@ class TestAdminClient:
             org = await client.update_org(
                 org_name="org",
                 user_default_credits=Decimal(200),
-                depletion_intervals=[60 * 60 * 24 * 2],
+                notification_intervals=OrgNotificationIntervals(
+                    balance_projection_seconds=[60 * 60 * 24 * 2],
+                    balance_amount=[
+                        -100,
+                    ],
+                    negative_balance_seconds=[
+                        60,
+                    ],
+                ),
             )
             assert org.user_default_credits == Decimal(200)
             assert org == mock_admin_server.orgs[0]
-            depletion_intervals = t.cast(t.List[int], org.depletion_intervals)
-            assert depletion_intervals[0] == 60 * 60 * 24 * 2
+            intervals = t.cast(OrgNotificationIntervals, org.notification_intervals)
+
+            assert intervals.balance_projection_seconds is not None
+            assert intervals.balance_projection_seconds[0] == 60 * 60 * 24 * 2
+
+            assert intervals.balance_amount is not None
+            assert intervals.balance_amount[0] == -100
+
+            assert intervals.negative_balance_seconds is not None
+            assert intervals.negative_balance_seconds[0] == 60
 
     async def test_create_org_with_defaults(
         self, mock_admin_server: AdminServer

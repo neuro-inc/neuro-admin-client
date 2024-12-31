@@ -4,7 +4,7 @@ import abc
 from abc import abstractmethod
 from collections.abc import AsyncIterator, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, List, Tuple, Union, overload
@@ -22,6 +22,7 @@ from neuro_admin_client.entities import (
     ClusterUserWithInfo,
     Org,
     OrgCluster,
+    OrgNotificationIntervals,
     OrgUser,
     OrgUserRoleType,
     OrgUserWithInfo,
@@ -471,7 +472,7 @@ class AdminClientABC(abc.ABC):
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        depletion_intervals: list[int] | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org: ...
 
     @abstractmethod
@@ -479,7 +480,7 @@ class AdminClientABC(abc.ABC):
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        depletion_intervals: list[int] | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         """
         Updates an organizations.
@@ -490,15 +491,9 @@ class AdminClientABC(abc.ABC):
             A decimal value which will be used as a default balance
             for all the users created in the future.
             Can be `None` to disable such functionality for the organization
-        :param depletion_intervals:
-            A list of integers, where each number represents a seconds-based interval,
-            at which the organization management team will receive a notifications:
-
-            >>> depletion_intervals = [86_400, 0]
-
-            The above definition means that balance-related notifications will
-            be dispatched 7 days prior to balance depletion, and exactly at
-            the moment when balance goes to a zero.
+        :param notification_intervals:
+            An instance of notification intervals object.
+            See a docstring of `OrgNotificationIntervals` for more details
         """
 
     #  org user
@@ -1134,13 +1129,22 @@ class AdminClientBase:
             return Quota()
         return Quota(total_running_jobs=payload.get("total_running_jobs"))
 
-    def _parse_balance(self, payload: dict[str, Any] | None) -> Balance:
+    @staticmethod
+    def _parse_balance(payload: dict[str, Any] | None) -> Balance:
         if payload is None:
             return Balance()
         return Balance(
             spent_credits=Decimal(payload["spent_credits"]),
             credits=Decimal(payload["credits"]) if payload.get("credits") else None,
         )
+
+    @staticmethod
+    def _parse_notification_intervals(
+        payload: dict[str, Any] | None
+    ) -> OrgNotificationIntervals | None:
+        if payload is None:
+            return None
+        return OrgNotificationIntervals(**payload)
 
     def _parse_cluster_user(
         self, cluster_name: str, payload: dict[str, Any]
@@ -1748,7 +1752,9 @@ class AdminClientBase:
                 if payload.get("user_default_credits")
                 else None
             ),
-            depletion_intervals=payload.get("depletion_intervals"),
+            notification_intervals=self._parse_notification_intervals(
+                payload.get("notification_intervals")
+            ),
         )
 
     async def list_orgs(self) -> list[Org]:
@@ -1863,17 +1869,16 @@ class AdminClientBase:
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        depletion_intervals: list[int] | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
-        """d"""
         credits = (
             str(user_default_credits) if user_default_credits is not None else None
         )
-        payload: dict[str, str | list[int] | None] = {
+        payload: dict[str, Any] = {
             "credits": credits,
         }
-        if depletion_intervals is not None:
-            payload["depletion_intervals"] = depletion_intervals
+        if notification_intervals is not None:
+            payload["notification_intervals"] = asdict(notification_intervals)
 
         async with self._request(
             "PATCH",
@@ -1888,12 +1893,12 @@ class AdminClientBase:
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        depletion_intervals: list[int] | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         return await self.update_org(
             org_name=org_name,
             user_default_credits=user_default_credits,
-            depletion_intervals=depletion_intervals,
+            notification_intervals=notification_intervals,
         )
 
     #  org user
@@ -2655,12 +2660,21 @@ class AdminClientDummy(AdminClientABC):
         name="org",
         balance=Balance(),
         user_default_credits=None,
-        depletion_intervals=[
-            60 * 60 * 24 * 7,
-            60 * 60 * 24 * 3,
-            60 * 60 * 24 * 1,
-            60 * 60 * 24 * -1,
-        ],
+        notification_intervals=OrgNotificationIntervals(
+            balance_projection_seconds=[
+                60 * 60 * 24 * 7,
+                60 * 60 * 24 * 3,
+                60 * 60 * 24 * 1,
+            ],
+            balance_amount=[
+                -100,
+                -500,
+            ],
+            negative_balance_seconds=[
+                60 * 60 * 24 * 1,
+                60 * 60 * 24 * 7,
+            ],
+        ),
     )
     DUMMY_ORG_CLUSTER = OrgCluster(
         org_name="org",
@@ -3126,7 +3140,7 @@ class AdminClientDummy(AdminClientABC):
         self,
         org_name: str,
         default_credits: Decimal | None,
-        depletion_intervals: list[int] | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         return self.DUMMY_ORG
 
@@ -3134,12 +3148,12 @@ class AdminClientDummy(AdminClientABC):
         self,
         org_name: str,
         default_credits: Decimal | None,
-        depletion_intervals: list[int] | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         return await self.update_org(
             org_name=org_name,
             default_credits=default_credits,
-            depletion_intervals=depletion_intervals,
+            notification_intervals=notification_intervals,
         )
 
     #  org user
