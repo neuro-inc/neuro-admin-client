@@ -4,7 +4,7 @@ import asyncio
 import datetime
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from decimal import Decimal
 from typing import Any
 
@@ -20,6 +20,7 @@ from neuro_admin_client import (
     ClusterUserRoleType,
     Org,
     OrgCluster,
+    OrgNotificationIntervals,
     OrgUser,
     OrgUserRoleType,
     Project,
@@ -157,10 +158,8 @@ class AdminServer:
             res["balance"]["credits"] = str(org.balance.credits)
         if org.user_default_credits:
             res["user_default_credits"] = str(org.user_default_credits)
-        if org.notification_balance_depletion_seconds:
-            res["notification_balance_depletion_seconds"] = (
-                org.notification_balance_depletion_seconds
-            )
+        if org.notification_intervals:
+            res["notification_intervals"] = asdict(org.notification_intervals)
         return res
 
     async def handle_org_post(
@@ -266,13 +265,14 @@ class AdminServer:
                         else None
                     ),
                 )
-                notification_balance_depletion_seconds = payload.get(
-                    "notification_balance_depletion_seconds"
-                )
-                if notification_balance_depletion_seconds:
+                notification_intervals = payload.get("notification_intervals")
+                if notification_intervals:
+                    notification_intervals = OrgNotificationIntervals(
+                        **payload["notification_intervals"]
+                    )
                     org = replace(
                         org,
-                        notification_balance_depletion_seconds=notification_balance_depletion_seconds,
+                        notification_intervals=notification_intervals,
                     )
                 self.orgs[index] = org
                 return aiohttp.web.json_response(self._serialize_org(org))

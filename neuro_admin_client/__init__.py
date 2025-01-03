@@ -4,7 +4,7 @@ import abc
 from abc import abstractmethod
 from collections.abc import AsyncIterator, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, List, Tuple, Union, overload
@@ -22,6 +22,7 @@ from neuro_admin_client.entities import (
     ClusterUserWithInfo,
     Org,
     OrgCluster,
+    OrgNotificationIntervals,
     OrgUser,
     OrgUserRoleType,
     OrgUserWithInfo,
@@ -471,7 +472,7 @@ class AdminClientABC(abc.ABC):
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org: ...
 
     @abstractmethod
@@ -479,8 +480,21 @@ class AdminClientABC(abc.ABC):
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
-    ) -> Org: ...
+        notification_intervals: OrgNotificationIntervals | None = None,
+    ) -> Org:
+        """
+        Updates an organizations.
+        :param org_name:
+            Will be used to identify an org.
+            A name itself won't be updated
+        :param user_default_credits:
+            A decimal value which will be used as a default balance
+            for all the users created in the future.
+            Can be `None` to disable such functionality for the organization
+        :param notification_intervals:
+            An instance of notification intervals object.
+            See a docstring of `OrgNotificationIntervals` for more details
+        """
 
     #  org user
 
@@ -1115,13 +1129,22 @@ class AdminClientBase:
             return Quota()
         return Quota(total_running_jobs=payload.get("total_running_jobs"))
 
-    def _parse_balance(self, payload: dict[str, Any] | None) -> Balance:
+    @staticmethod
+    def _parse_balance(payload: dict[str, Any] | None) -> Balance:
         if payload is None:
             return Balance()
         return Balance(
             spent_credits=Decimal(payload["spent_credits"]),
             credits=Decimal(payload["credits"]) if payload.get("credits") else None,
         )
+
+    @staticmethod
+    def _parse_notification_intervals(
+        payload: dict[str, Any] | None
+    ) -> OrgNotificationIntervals | None:
+        if payload is None:
+            return None
+        return OrgNotificationIntervals(**payload)
 
     def _parse_cluster_user(
         self, cluster_name: str, payload: dict[str, Any]
@@ -1729,8 +1752,8 @@ class AdminClientBase:
                 if payload.get("user_default_credits")
                 else None
             ),
-            notification_balance_depletion_seconds=payload.get(
-                "notification_balance_depletion_seconds"
+            notification_intervals=self._parse_notification_intervals(
+                payload.get("notification_intervals")
             ),
         )
 
@@ -1846,18 +1869,16 @@ class AdminClientBase:
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         credits = (
             str(user_default_credits) if user_default_credits is not None else None
         )
-        payload: dict[str, str | int | None] = {
+        payload: dict[str, Any] = {
             "credits": credits,
         }
-        if notification_balance_depletion_seconds is not None:
-            payload["notification_balance_depletion_seconds"] = (
-                notification_balance_depletion_seconds
-            )
+        if notification_intervals is not None:
+            payload["notification_intervals"] = asdict(notification_intervals)
 
         async with self._request(
             "PATCH",
@@ -1872,12 +1893,12 @@ class AdminClientBase:
         self,
         org_name: str,
         user_default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         return await self.update_org(
             org_name=org_name,
             user_default_credits=user_default_credits,
-            notification_balance_depletion_seconds=notification_balance_depletion_seconds,
+            notification_intervals=notification_intervals,
         )
 
     #  org user
@@ -2639,7 +2660,21 @@ class AdminClientDummy(AdminClientABC):
         name="org",
         balance=Balance(),
         user_default_credits=None,
-        notification_balance_depletion_seconds=60 * 60 * 24,
+        notification_intervals=OrgNotificationIntervals(
+            balance_projection_seconds=[
+                60 * 60 * 24 * 7,
+                60 * 60 * 24 * 3,
+                60 * 60 * 24 * 1,
+            ],
+            balance_amount=[
+                -100,
+                -500,
+            ],
+            negative_balance_seconds=[
+                60 * 60 * 24 * 1,
+                60 * 60 * 24 * 7,
+            ],
+        ),
     )
     DUMMY_ORG_CLUSTER = OrgCluster(
         org_name="org",
@@ -3105,7 +3140,7 @@ class AdminClientDummy(AdminClientABC):
         self,
         org_name: str,
         default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         return self.DUMMY_ORG
 
@@ -3113,12 +3148,12 @@ class AdminClientDummy(AdminClientABC):
         self,
         org_name: str,
         default_credits: Decimal | None,
-        notification_balance_depletion_seconds: int | None = None,
+        notification_intervals: OrgNotificationIntervals | None = None,
     ) -> Org:
         return await self.update_org(
             org_name=org_name,
             default_credits=default_credits,
-            notification_balance_depletion_seconds=notification_balance_depletion_seconds,
+            notification_intervals=notification_intervals,
         )
 
     #  org user
