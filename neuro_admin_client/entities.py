@@ -87,7 +87,7 @@ class OrgNotificationIntervals:
     balance_amount: Optional[List[int]]
     """What exact balance amounts should trigger a notification?
     """
-    negative_balance_seconds: Optional[List[int]]
+    balance_depletion_seconds: Optional[List[int]]
     """If a balance is negative, when we should send a notification?
     e.g. 86_400 means 1 day after org reaches a zero balance.
     """
