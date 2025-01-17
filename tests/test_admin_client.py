@@ -291,7 +291,7 @@ class TestAdminClient:
                 notification_intervals=OrgNotificationIntervals(
                     balance_projection_seconds=[60 * 60 * 24],
                     balance_amount=None,
-                    negative_balance_seconds=None,
+                    balance_depletion_seconds=None,
                 ),
             ),
         ]
@@ -305,7 +305,7 @@ class TestAdminClient:
                     balance_amount=[
                         -100,
                     ],
-                    negative_balance_seconds=[
+                    balance_depletion_seconds=[
                         60,
                     ],
                 ),
@@ -320,8 +320,8 @@ class TestAdminClient:
             assert intervals.balance_amount is not None
             assert intervals.balance_amount[0] == -100
 
-            assert intervals.negative_balance_seconds is not None
-            assert intervals.negative_balance_seconds[0] == 60
+            assert intervals.balance_depletion_seconds is not None
+            assert intervals.balance_depletion_seconds[0] == 60
 
     async def test_create_org_with_defaults(
         self, mock_admin_server: AdminServer
