@@ -1140,7 +1140,7 @@ class AdminClientBase:
 
     @staticmethod
     def _parse_notification_intervals(
-        payload: dict[str, Any] | None
+        payload: dict[str, Any] | None,
     ) -> OrgNotificationIntervals | None:
         if payload is None:
             return None
