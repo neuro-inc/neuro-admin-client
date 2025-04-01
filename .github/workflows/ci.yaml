@@ -3,54 +3,40 @@ name: CI
 on:
   push:
     branches: [master]
-    tags: [v*]
+    tags: ['v*']
   pull_request:
-    branches: [master]
-  pull_request_target:
     branches: [master]
   schedule:
   - cron: 0 4 * * *
+
 jobs:
   test:
-    name: Run tests
+    name: All checks are passed
+    uses: ./.github/workflows/test.yaml
+
+  approve:
+    name: Approve bot PR
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name != 'pull_request_target' && github.actor != 'dependabot[bot]') ||
-      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]')
-    strategy:
-      matrix:
-        py_version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+    if: endsWith(github.actor, '[bot]')
+    needs: test
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-    - name: Checkout commit
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-    - name: Install python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.py_version }}
-    - name: Cache packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-py-${{ matrix.py_version }}-${{ hashFiles('setup.py')
-          }}-${{ hashFiles('requirements.txt') }}
-    - name: Install dependencies
-      run: make setup
-    - name: Lint
-      run: |
-        echo "::add-matcher::.github/actionlint-matcher.json"
-        make lint
-      env:
-        CI_LINT_RUN: 1
-    - name: Run tests
-      run: make test
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        files: ./.coverage.xml
-        flags: py${{ matrix.py_version }}
-        name: codecov
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: metadata
+        id: metadata
+        if: github.actor == 'dependabot[bot]'
+        uses: dependabot/fetch-metadata@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable auto-merge for bot PRs
+        run: gh pr merge --auto --squash --delete-branch "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   deploy:
     name: Release client
     runs-on: ubuntu-latest
