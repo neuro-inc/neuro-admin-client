@@ -3,11 +3,12 @@ name: CI
 on:
   push:
     branches: [master]
-    tags: [v*]
+    tags: ['v*']
   pull_request:
     branches: [master]
   schedule:
   - cron: 0 4 * * *
+
 jobs:
   test:
     name: All checks are passed
