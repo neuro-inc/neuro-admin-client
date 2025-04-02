@@ -1256,9 +1256,7 @@ class AdminServer:
 
 
 @pytest.fixture
-async def mock_admin_server(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[AdminServer]:
+async def mock_admin_server() -> AsyncIterator[AdminServer]:
     admin_server = AdminServer()
 
     def _create_app() -> aiohttp.web.Application:
@@ -1575,7 +1573,7 @@ class ApiRunner:
             await self._cleanup_future
 
     async def run(self) -> ApiAddress:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         self._task = loop.create_task(self._run())
         return await self._api_address_future
 
