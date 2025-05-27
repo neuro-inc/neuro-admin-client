@@ -2593,7 +2593,7 @@ class AdminClient(AdminClientBase, AdminClientABC):
         if not self._client:
             return
         await self._client.close()
-        del self._client
+        self._client = None
 
     def _init(self) -> None:
         if self._client:
