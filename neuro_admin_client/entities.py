@@ -1,8 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import List, Optional
+from typing import Any, List, Optional, cast
+
+from yarl import URL
 
 
 class FullNameMixin:
@@ -220,3 +222,89 @@ class ProjectUser:
 @dataclass(frozen=True)
 class ProjectUserWithInfo(ProjectUser):
     user_info: UserInfo
+
+
+class OrderedEnum(str, Enum):
+    _order: int
+
+    def __new__(cls, value: str) -> "OrderedEnum":
+        order = len(cls.__members__)
+        obj = cast("OrderedEnum", str.__new__(cls, value))  # type: ignore[redundant-cast]
+        obj._value_ = value
+        obj._order = order
+        return obj
+
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order >= other._order
+        return NotImplemented
+
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order > other._order
+        return NotImplemented
+
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order <= other._order
+        return NotImplemented
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order < other._order
+        return NotImplemented
+
+
+@unique
+class Action(OrderedEnum):
+    DENY = "deny"
+    LIST = "list"
+    READ = "read"
+    WRITE = "write"
+    MANAGE = "manage"
+
+    @classmethod
+    def public(cls) -> list["Action"]:
+        return [cls.READ, cls.WRITE, cls.MANAGE]
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.__str__().__repr__()
+
+
+def check_action_allowed(actual: Action, requested: Action | str) -> bool:
+    if isinstance(requested, str):
+        requested = Action(requested)
+    return actual >= requested
+
+
+@dataclass(frozen=True)
+class Permission:
+    uri: URL
+    action: Action
+
+    def __init__(self, uri: Any, action: Action | str):
+        object.__setattr__(self, "uri", uri if isinstance(uri, URL) else URL(uri))
+        if isinstance(action, str):
+            action = Action(action)
+        object.__setattr__(self, "action", action)
+
+    def with_manage_action(self) -> "Permission":
+        return replace(self, action=Action.MANAGE)
+
+    def check_action_allowed(self, requested: Action | str) -> bool:
+        return check_action_allowed(self.action, requested)
+
+    def can_list(self) -> bool:
+        return self.check_action_allowed(Action.LIST)
+
+    def can_read(self) -> bool:
+        return self.check_action_allowed(Action.READ)
+
+    def can_write(self) -> bool:
+        return self.check_action_allowed(Action.WRITE)
+
+    def __str__(self) -> str:
+        return f"Permission(uri={self.uri!s}, action={self.action.value})"

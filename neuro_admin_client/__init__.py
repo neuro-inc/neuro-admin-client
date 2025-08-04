@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import abc
+import asyncio
 from abc import abstractmethod
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, List, Tuple, Union, overload
+from typing import Any, List, Optional, Tuple, Union, overload
 
 import aiohttp
+from aiohttp.hdrs import AUTHORIZATION
 from multidict import CIMultiDict
 from typing_extensions import Literal
 from yarl import URL, Query
 
+from neuro_admin_client.bearer_auth import BearerAuth
 from neuro_admin_client.entities import (
     Balance,
     Cluster,
@@ -26,6 +29,7 @@ from neuro_admin_client.entities import (
     OrgUser,
     OrgUserRoleType,
     OrgUserWithInfo,
+    Permission,
     Project,
     ProjectUser,
     ProjectUserRoleType,
@@ -72,6 +76,9 @@ class AdminClientABC(abc.ABC):
 
     @overload
     async def get_user(self, name: str) -> User: ...
+
+    @overload
+    async def get_user(self, name: str, *, headers: CIMultiDict[str]) -> User: ...
 
     @overload
     async def get_user(
@@ -846,6 +853,7 @@ class AdminClientBase:
         *,
         json: dict[str, Any] | None = None,
         params: Query | None = None,
+        headers: Optional[CIMultiDict[str]] = None,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         pass
 
@@ -912,6 +920,9 @@ class AdminClientBase:
     async def get_user(self, name: str) -> User: ...
 
     @overload
+    async def get_user(self, name: str, *, headers: CIMultiDict[str]) -> User: ...
+
+    @overload
     async def get_user(
         self, name: str, *, include_clusters: Literal[True]
     ) -> tuple[User, list[ClusterUser]]: ...
@@ -940,10 +951,18 @@ class AdminClientBase:
         include_projects: bool = False,
     ) -> GetUserResponse: ...
 
+    @staticmethod
+    def generate_auth_headers(token: str | None = None) -> CIMultiDict[str]:
+        headers: CIMultiDict[str] = CIMultiDict()
+        if token:
+            headers[AUTHORIZATION] = BearerAuth(token).encode()
+        return headers
+
     async def get_user(
         self,
         name: str,
         *,
+        headers: Optional[CIMultiDict[str]] = None,
         include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
@@ -955,7 +974,9 @@ class AdminClientBase:
             params.append(("include", "clusters"))
         if include_projects:
             params.append(("include", "projects"))
-        async with self._request("GET", f"users/{name}", params=params) as resp:
+        async with self._request(
+            "GET", f"users/{name}", params=params, headers=headers
+        ) as resp:
             resp.raise_for_status()
             payload = await resp.json()
             user = self._parse_user_payload(payload)
@@ -1190,9 +1211,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/users"
         async with self._request(
-            "GET",
-            url,
-            params={"with_user_info": _to_query_bool(with_user_info)},
+            "GET", url, params={"with_user_info": _to_query_bool(with_user_info)}
         ) as resp:
             resp.raise_for_status()
             clusters_raw = await resp.json()
@@ -1232,9 +1251,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/users/{user_name}"
         async with self._request(
-            "GET",
-            url,
-            params={"with_user_info": _to_query_bool(with_user_info)},
+            "GET", url, params={"with_user_info": _to_query_bool(with_user_info)}
         ) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
@@ -1357,10 +1374,7 @@ class AdminClientBase:
             url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}"
         else:
             url = f"clusters/{cluster_name}/users/{user_name}"
-        async with self._request(
-            "DELETE",
-            url,
-        ) as resp:
+        async with self._request("DELETE", url) as resp:
             resp.raise_for_status()
 
     @overload
@@ -1410,12 +1424,7 @@ class AdminClientBase:
             url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/quota"
         else:
             url = f"clusters/{cluster_name}/users/{user_name}/quota"
-        async with self._request(
-            "PATCH",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
+        async with self._request("PATCH", url, json=payload, params=params) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_cluster_user(cluster_name, raw_user)
@@ -1464,12 +1473,7 @@ class AdminClientBase:
             url = f"clusters/{cluster_name}/orgs/{org_name}/users/{user_name}/quota"
         else:
             url = f"clusters/{cluster_name}/users/{user_name}/quota"
-        async with self._request(
-            "PATCH",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
+        async with self._request("PATCH", url, json=payload, params=params) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_cluster_user(cluster_name, raw_user)
@@ -1487,12 +1491,7 @@ class AdminClientBase:
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
         url = f"clusters/{cluster_name}/orgs/{org_name}/spending"
-        async with self._request(
-            "POST",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
+        async with self._request("POST", url, json=payload, params=params) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_org_cluster(cluster_name, raw_user)
@@ -1551,19 +1550,14 @@ class AdminClientBase:
         if storage_size is not None:
             payload["storage_size"] = storage_size
         async with self._request(
-            "POST",
-            f"clusters/{cluster_name}/orgs",
-            json=payload,
+            "POST", f"clusters/{cluster_name}/orgs", json=payload
         ) as resp:
             resp.raise_for_status()
             payload = await resp.json()
             return self._parse_org_cluster(cluster_name, payload)
 
     async def list_org_clusters(self, cluster_name: str) -> list[OrgCluster]:
-        async with self._request(
-            "GET",
-            f"clusters/{cluster_name}/orgs",
-        ) as resp:
+        async with self._request("GET", f"clusters/{cluster_name}/orgs") as resp:
             resp.raise_for_status()
             raw_list = await resp.json()
             clusters = [
@@ -1577,8 +1571,7 @@ class AdminClientBase:
         org_name: str,
     ) -> OrgCluster:
         async with self._request(
-            "GET",
-            f"clusters/{cluster_name}/orgs/{org_name}",
+            "GET", f"clusters/{cluster_name}/orgs/{org_name}"
         ) as resp:
             resp.raise_for_status()
             raw_data = await resp.json()
@@ -1620,8 +1613,7 @@ class AdminClientBase:
         org_name: str,
     ) -> None:
         async with self._request(
-            "DELETE",
-            f"clusters/{cluster_name}/orgs/{org_name}",
+            "DELETE", f"clusters/{cluster_name}/orgs/{org_name}"
         ) as resp:
             resp.raise_for_status()
 
@@ -1642,9 +1634,7 @@ class AdminClientBase:
         if default_quota.total_running_jobs is not None:
             payload["quota"]["total_running_jobs"] = default_quota.total_running_jobs
         async with self._request(
-            "PATCH",
-            f"clusters/{cluster_name}/orgs/{org_name}/defaults",
-            json=payload,
+            "PATCH", f"clusters/{cluster_name}/orgs/{org_name}/defaults", json=payload
         ) as resp:
             resp.raise_for_status()
             raw_org_cluster = await resp.json()
@@ -1811,12 +1801,7 @@ class AdminClientBase:
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
         url = f"orgs/{org_name}/spending"
-        async with self._request(
-            "POST",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
+        async with self._request("POST", url, json=payload, params=params) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
             return self._parse_org_payload(raw_org)
@@ -1835,10 +1820,7 @@ class AdminClientBase:
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
         async with self._request(
-            "PATCH",
-            f"orgs/{org_name}/balance",
-            json=payload,
-            params=params,
+            "PATCH", f"orgs/{org_name}/balance", json=payload, params=params
         ) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
@@ -1856,10 +1838,7 @@ class AdminClientBase:
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
         async with self._request(
-            "PATCH",
-            f"orgs/{org_name}/balance",
-            json=payload,
-            params=params,
+            "PATCH", f"orgs/{org_name}/balance", json=payload, params=params
         ) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
@@ -1881,9 +1860,7 @@ class AdminClientBase:
             payload["notification_intervals"] = asdict(notification_intervals)
 
         async with self._request(
-            "PATCH",
-            f"orgs/{org_name}/defaults",
-            json=payload,
+            "PATCH", f"orgs/{org_name}/defaults", json=payload
         ) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
@@ -1946,9 +1923,7 @@ class AdminClientBase:
             params["roles"] = list({role.value for role in roles})
 
         async with self._request(
-            "GET",
-            f"orgs/{org_name}/users",
-            params=params,
+            "GET", f"orgs/{org_name}/users", params=params
         ) as resp:
             resp.raise_for_status()
             orgs_raw = await resp.json()
@@ -2097,12 +2072,7 @@ class AdminClientBase:
 
         url = f"orgs/{org_name}/users/{user_name}/balance"
 
-        async with self._request(
-            "PATCH",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
+        async with self._request("PATCH", url, json=payload, params=params) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_org_user(org_name, raw_user)
@@ -2145,12 +2115,7 @@ class AdminClientBase:
         if idempotency_key:
             params["idempotency_key"] = idempotency_key
         url = f"orgs/{org_name}/users/{user_name}/balance"
-        async with self._request(
-            "PATCH",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
+        async with self._request("PATCH", url, json=payload, params=params) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_org_user(org_name, raw_user)
@@ -2194,20 +2159,14 @@ class AdminClientBase:
             params["idempotency_key"] = idempotency_key
         url = f"orgs/{org_name}/users/{user_name}/spending"
 
-        async with self._request(
-            "POST",
-            url,
-            json=payload,
-            params=params,
-        ) as resp:
+        async with self._request("POST", url, json=payload, params=params) as resp:
             resp.raise_for_status()
             raw_user = await resp.json()
             return self._parse_org_user(org_name, raw_user)
 
     async def delete_org_user(self, org_name: str, user_name: str) -> None:
         async with self._request(
-            "DELETE",
-            f"orgs/{org_name}/users/{user_name}",
+            "DELETE", f"orgs/{org_name}/users/{user_name}"
         ) as resp:
             resp.raise_for_status()
 
@@ -2241,11 +2200,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/projects"
 
-        async with self._request(
-            "POST",
-            url,
-            json=payload,
-        ) as resp:
+        async with self._request("POST", url, json=payload) as resp:
             resp.raise_for_status()
             return self._parse_project(await resp.json())
 
@@ -2257,10 +2212,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/projects"
 
-        async with self._request(
-            "GET",
-            url,
-        ) as resp:
+        async with self._request("GET", url) as resp:
             resp.raise_for_status()
             return [self._parse_project(it) for it in await resp.json()]
 
@@ -2275,10 +2227,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/projects/{project_name}"
 
-        async with self._request(
-            "GET",
-            url,
-        ) as resp:
+        async with self._request("GET", url) as resp:
             resp.raise_for_status()
             return self._parse_project(await resp.json())
 
@@ -2293,11 +2242,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{project.cluster_name}/projects/{project.name}"
 
-        async with self._request(
-            "PUT",
-            url,
-            json=payload,
-        ) as resp:
+        async with self._request("PUT", url, json=payload) as resp:
             resp.raise_for_status()
 
     async def delete_project(
@@ -2311,10 +2256,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/projects/{project_name}"
 
-        async with self._request(
-            "DELETE",
-            url,
-        ) as resp:
+        async with self._request("DELETE", url) as resp:
             resp.raise_for_status()
 
     # Project users
@@ -2367,9 +2309,7 @@ class AdminClientBase:
             url = f"clusters/{cluster_name}/projects/{project_name}/users"
 
         async with self._request(
-            "GET",
-            url,
-            params={"with_user_info": _to_query_bool(with_user_info)},
+            "GET", url, params={"with_user_info": _to_query_bool(with_user_info)}
         ) as resp:
             resp.raise_for_status()
             return [self._parse_project_user(it) for it in await resp.json()]
@@ -2411,9 +2351,7 @@ class AdminClientBase:
             url = f"clusters/{cluster_name}/projects/{project_name}/users/{user_name}"
 
         async with self._request(
-            "GET",
-            url,
-            params={"with_user_info": _to_query_bool(with_user_info)},
+            "GET", url, params={"with_user_info": _to_query_bool(with_user_info)}
         ) as resp:
             resp.raise_for_status()
             return self._parse_project_user(await resp.json())
@@ -2468,8 +2406,8 @@ class AdminClientBase:
         async with self._request(
             "POST",
             url,
-            params={"with_user_info": _to_query_bool(with_user_info)},
             json=payload,
+            params={"with_user_info": _to_query_bool(with_user_info)},
         ) as resp:
             resp.raise_for_status()
             return self._parse_project_user(await resp.json())
@@ -2493,11 +2431,7 @@ class AdminClientBase:
                 f"/users/{project_user.user_name}"
             )
 
-        async with self._request(
-            "PUT",
-            url,
-            json=payload,
-        ) as resp:
+        async with self._request("PUT", url, json=payload) as resp:
             resp.raise_for_status()
 
     async def delete_project_user(
@@ -2515,10 +2449,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/projects/{project_name}/users/{user_name}"
 
-        async with self._request(
-            "DELETE",
-            url,
-        ) as resp:
+        async with self._request("DELETE", url) as resp:
             resp.raise_for_status()
 
     # OLD API:
@@ -2605,17 +2536,11 @@ class AdminClient(AdminClientBase, AdminClientABC):
             connect=self._conn_timeout_s, total=self._read_timeout_s
         )
         self._client = aiohttp.ClientSession(
-            headers=self._generate_headers(self._service_token),
+            headers=AdminClient.generate_auth_headers(self._service_token),
             connector=connector,
             timeout=timeout,
             trace_configs=list(self._trace_configs),
         )
-
-    def _generate_headers(self, token: str | None = None) -> CIMultiDict[str]:
-        headers: CIMultiDict[str] = CIMultiDict()
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        return headers
 
     @asynccontextmanager
     async def _request(
@@ -2721,6 +2646,9 @@ class AdminClientDummy(AdminClientABC):
 
     @overload
     async def get_user(self, name: str) -> User: ...
+
+    @overload
+    async def get_user(self, name: str, *, headers: CIMultiDict[str]) -> User: ...
 
     @overload
     async def get_user(
@@ -3496,3 +3424,155 @@ class AdminClientDummy(AdminClientABC):
         user_name: str | None = None,
     ) -> None:
         pass
+
+
+def _permission_from_primitive(perm: dict[str, str]) -> Permission:
+    return Permission(uri=perm["uri"], action=perm["action"])
+
+
+class AuthClient:
+    def __init__(
+        self,
+        url: Optional[URL],
+        token: str,
+        trace_configs: Optional[list[aiohttp.TraceConfig]] = None,
+    ) -> None:
+        if url is not None and not url:
+            raise ValueError(
+                "url argument should be http URL or None for secure-less configurations"
+            )
+        self._token = token
+        self._adminClient = AdminClient(base_url=url, service_token=token)
+        headers = AdminClient.generate_auth_headers(token)
+        self._client = aiohttp.ClientSession(
+            headers=headers, trace_configs=trace_configs
+        )
+        self._url = url
+
+    async def __aenter__(self) -> AuthClient:
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.close()
+
+    def _make_url(self, path: str) -> URL:
+        assert self._url
+        if path.startswith("/"):
+            path = path[1:]
+        return self._url / path
+
+    async def close(self) -> None:
+        await self._client.close()
+
+    @asynccontextmanager
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        headers: Optional[CIMultiDict[str]] = None,
+        json: Any = None,
+        params: Optional[Mapping[str, str]] = None,
+        raise_for_status: bool = True,
+    ) -> AsyncIterator[aiohttp.ClientResponse]:
+        url = self._make_url(path)
+        resp = await self._client.request(
+            method, url, headers=headers, params=params, json=json
+        )
+        if raise_for_status:
+            await _raise_for_status(resp)
+
+        try:
+            yield resp
+        finally:
+            resp.release()
+
+    @property
+    def is_anonymous_access_allowed(self) -> bool:
+        return self._url is None
+
+    async def check_user_permissions(
+        self,
+        name: str,
+        permissions: Sequence[Union[Permission, Sequence[Permission]]],
+        token: Optional[str] = None,
+    ) -> bool:
+        if self._url is None:
+            return True
+        missing = await self.get_missing_permissions(name, permissions)
+        return not missing
+
+    async def get_missing_permissions(
+        self,
+        name: str,
+        permissions: Sequence[Union[Permission, Sequence[Permission]]],
+        token: Optional[str] = None,
+    ) -> Sequence[Permission]:
+        assert permissions, "No permissions passed"
+        if self._url is None:
+            return []
+
+        path = f"users/{name}/permissions/check"
+        headers = AdminClient.generate_auth_headers(token)
+
+        flat_permissions: list[Permission] = []
+        for p in permissions:
+            if isinstance(p, Permission):
+                flat_permissions.append(p)
+            else:
+                flat_permissions.extend(p)
+
+        # Deduplicate by URI -> keep the lowest action
+        lowest_by_uri: dict[str, Permission] = {}
+        for perm in flat_permissions:
+            uri_str = str(perm.uri)
+            if (
+                uri_str not in lowest_by_uri
+                or perm.action < lowest_by_uri[uri_str].action
+            ):
+                lowest_by_uri[uri_str] = perm
+
+        payload: list[dict[str, Any]] = [asdict(p) for p in lowest_by_uri.values()]
+        async with self._request(
+            "POST", path, headers=headers, json=payload, raise_for_status=False
+        ) as resp:
+            if resp.status not in (200, 403):
+                await _raise_for_status(resp)
+            data = await resp.json()
+            if "missing" not in data:
+                assert resp.status == 403, f"unexpected response {resp.status}: {data}"
+                await _raise_for_status(resp)
+
+            return [_permission_from_primitive(p) for p in data["missing"]]
+
+    async def get_user(self, name, token):
+        if self._url is None:
+            return User(name="user", email="user@apolo.us")
+        headers = AdminClient.generate_auth_headers(token)
+        async with self._adminClient.get_user(name, headers=headers) as resp:
+            payload = await resp.json()
+            return User(name=payload["name"], email=payload["email"])
+
+
+async def _raise_for_status(resp: aiohttp.ClientResponse) -> None:
+    if 400 <= resp.status:
+        details: str
+        try:
+            obj = await resp.json()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # ignore any error with reading message body
+            details = resp.reason  # type: ignore
+        else:
+            try:
+                details = obj["error"]
+            except KeyError:
+                details = str(obj)
+        raise aiohttp.ClientResponseError(
+            resp.request_info,
+            resp.history,
+            status=resp.status,
+            message=details,
+            headers=resp.headers,
+        )
