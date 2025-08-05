@@ -2,7 +2,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional, Union, cast
 
 from yarl import URL
 
@@ -274,7 +274,7 @@ class Action(OrderedEnum):
         return self.__str__().__repr__()
 
 
-def check_action_allowed(actual: Action, requested: Action | str) -> bool:
+def check_action_allowed(actual: Action, requested: Union[Action, str]) -> bool:
     if isinstance(requested, str):
         requested = Action(requested)
     return actual >= requested
@@ -285,7 +285,7 @@ class Permission:
     uri: URL
     action: Action
 
-    def __init__(self, uri: Any, action: Action | str):
+    def __init__(self, uri: Any, action: Union[Action, str]):
         object.__setattr__(self, "uri", uri if isinstance(uri, URL) else URL(uri))
         if isinstance(action, str):
             action = Action(action)
@@ -294,7 +294,7 @@ class Permission:
     def with_manage_action(self) -> "Permission":
         return replace(self, action=Action.MANAGE)
 
-    def check_action_allowed(self, requested: Action | str) -> bool:
+    def check_action_allowed(self, requested: Union[Action, str]) -> bool:
         return check_action_allowed(self.action, requested)
 
     def can_list(self) -> bool:

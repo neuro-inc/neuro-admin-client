@@ -65,7 +65,7 @@ class IdentityPolicy(AbstractIdentityPolicy):
     ) -> None:  # pragma: no cover
         pass
 
-    def _extract_ws_identity(self, request: Request) -> str | None:
+    def _extract_ws_identity(self, request: Request) -> Optional[str]:
         ws_subprotocol = request.headers.get(SEC_WEBSOCKET_PROTOCOL)
         if ws_subprotocol is not None:
             for part in ws_subprotocol.strip().split(" "):
@@ -79,7 +79,7 @@ class AuthPolicy(AbstractAuthorizationPolicy):
     def __init__(self, auth_client: AuthClient) -> None:
         self._auth_client = auth_client
 
-    def get_user_name_from_identity(self, identity: str | None) -> Optional[str]:
+    def get_user_name_from_identity(self, identity: Optional[str]) -> Optional[str]:
         if identity is None or self._auth_client.is_anonymous_access_allowed:
             return "user"
 
@@ -124,8 +124,8 @@ class AuthPolicy(AbstractAuthorizationPolicy):
 
     async def permits(
         self,
-        identity: str | None,
-        permission: str | Enum,
+        identity: Optional[str],
+        permission: Union[str, Enum],
         context: Any = None,
     ) -> bool:
         name = self.get_user_name_from_identity(identity)
