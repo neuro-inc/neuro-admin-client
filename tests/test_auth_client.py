@@ -2,10 +2,10 @@ import pytest
 from yarl import URL
 
 from neuro_admin_client import (
-    Action,
     AuthClient,
     Permission,
 )
+from neuro_admin_client.entities import Action
 
 
 class TestAction:

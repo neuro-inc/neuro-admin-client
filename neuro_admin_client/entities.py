@@ -268,7 +268,7 @@ class Action(OrderedEnum):
         return [cls.READ, cls.WRITE, cls.MANAGE]
 
     def __str__(self) -> str:
-        return self.value
+        return str(self.value)
 
     def __repr__(self) -> str:
         return self.__str__().__repr__()

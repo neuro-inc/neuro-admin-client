@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.hdrs import AUTHORIZATION, SEC_WEBSOCKET_PROTOCOL
@@ -51,7 +51,7 @@ class IdentityPolicy(AbstractIdentityPolicy):
             return ws_identity or query_identity or self._default_identity
 
         if self._auth_scheme == AuthScheme.BASIC:
-            identity = BasicAuth.decode(header_identity).password
+            identity = cast(str, BasicAuth.decode(header_identity).password)
         else:
             identity = BearerAuth.decode(header_identity).token
 
@@ -86,8 +86,9 @@ class AuthPolicy(AbstractAuthorizationPolicy):
         try:
             claims = jwt.get_unverified_claims(identity)
             for identity_claim in JWT_IDENTITY_CLAIM_OPTIONS:
-                if identity_claim in claims:
-                    return claims[identity_claim]
+                value = claims[identity_claim]
+                if isinstance(value, str):
+                    return value
             return None
         except JWTError:
             return None

@@ -105,6 +105,7 @@ class AdminClientABC(abc.ABC):
         self,
         name: str,
         *,
+        headers: Optional[CIMultiDict[str]] = None,
         include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
@@ -920,7 +921,9 @@ class AdminClientBase:
     async def get_user(self, name: str) -> User: ...
 
     @overload
-    async def get_user(self, name: str, *, headers: CIMultiDict[str]) -> User: ...
+    async def get_user(
+        self, name: str, *, headers: Optional[CIMultiDict[str]]
+    ) -> User: ...
 
     @overload
     async def get_user(
@@ -950,13 +953,6 @@ class AdminClientBase:
         include_clusters: bool = False,
         include_projects: bool = False,
     ) -> GetUserResponse: ...
-
-    @staticmethod
-    def generate_auth_headers(token: str | None = None) -> CIMultiDict[str]:
-        headers: CIMultiDict[str] = CIMultiDict()
-        if token:
-            headers[AUTHORIZATION] = BearerAuth(token).encode()
-        return headers
 
     async def get_user(
         self,
@@ -1166,6 +1162,13 @@ class AdminClientBase:
         if payload is None:
             return None
         return OrgNotificationIntervals(**payload)
+
+    @staticmethod
+    def generate_auth_headers(token: str | None = None) -> CIMultiDict[str]:
+        headers: CIMultiDict[str] = CIMultiDict()
+        if token:
+            headers[AUTHORIZATION] = BearerAuth(token).encode()
+        return headers
 
     def _parse_cluster_user(
         self, cluster_name: str, payload: dict[str, Any]
@@ -2648,7 +2651,9 @@ class AdminClientDummy(AdminClientABC):
     async def get_user(self, name: str) -> User: ...
 
     @overload
-    async def get_user(self, name: str, *, headers: CIMultiDict[str]) -> User: ...
+    async def get_user(
+        self, name: str, *, headers: Optional[CIMultiDict[str]]
+    ) -> User: ...
 
     @overload
     async def get_user(
@@ -2683,6 +2688,7 @@ class AdminClientDummy(AdminClientABC):
         self,
         name: str,
         *,
+        headers: Optional[CIMultiDict[str]] = None,
         include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
@@ -3545,13 +3551,11 @@ class AuthClient:
 
             return [_permission_from_primitive(p) for p in data["missing"]]
 
-    async def get_user(self, name, token):
+    async def get_user(self, name: str, token: str) -> User:
         if self._url is None:
             return User(name="user", email="user@apolo.us")
         headers = AdminClient.generate_auth_headers(token)
-        async with self._adminClient.get_user(name, headers=headers) as resp:
-            payload = await resp.json()
-            return User(name=payload["name"], email=payload["email"])
+        return await self._adminClient.get_user(name, headers=headers)
 
 
 async def _raise_for_status(resp: aiohttp.ClientResponse) -> None:
