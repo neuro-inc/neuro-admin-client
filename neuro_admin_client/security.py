@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import Sequence
 from enum import Enum
-from typing import Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.hdrs import AUTHORIZATION, SEC_WEBSOCKET_PROTOCOL
@@ -10,7 +12,9 @@ from aiohttp_security import AbstractAuthorizationPolicy, AbstractIdentityPolicy
 from jose import jwt
 from jose.exceptions import JWTError
 
-from . import AuthClient
+if TYPE_CHECKING:
+    from . import AuthClient
+
 from .bearer_auth import BearerAuth
 from .entities import Permission, User
 

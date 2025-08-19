@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import json
 from abc import abstractmethod
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
@@ -11,7 +12,10 @@ from decimal import Decimal
 from typing import Any, List, Optional, Tuple, Union, overload
 
 import aiohttp
+from aiohttp import ClientError, web
 from aiohttp.hdrs import AUTHORIZATION
+from aiohttp_security import check_authorized
+from aiohttp_security.api import AUTZ_KEY, IDENTITY_KEY
 from multidict import CIMultiDict
 from typing_extensions import Literal
 from yarl import URL, Query
@@ -39,6 +43,8 @@ from neuro_admin_client.entities import (
     UserInfo,
 )
 
+from .security import AuthPolicy, Kind
+
 
 def _to_query_bool(flag: bool) -> str:
     return str(flag).lower()
@@ -59,6 +65,50 @@ GetUserRet = Union[
     Tuple[User, List[ClusterUser], List[ProjectUser]],
     GetUserResponse,
 ]
+
+
+async def check_permissions(
+    request: web.Request, permissions: Sequence[Union[Permission, Sequence[Permission]]]
+) -> None:
+    user_name = await check_authorized(request)
+    auth_policy = request.config_dict.get(AUTZ_KEY)
+    if not auth_policy:
+        raise RuntimeError("Auth policy not configured")
+    assert isinstance(auth_policy, AuthPolicy)
+
+    try:
+        missing = await auth_policy.get_missing_permissions(user_name, permissions)
+    except ClientError as e:
+        # re-wrap in order not to expose the client
+        raise RuntimeError(e) from e
+
+    if missing:
+        payload = {"missing": [_permission_to_primitive(p) for p in missing]}
+        raise web.HTTPForbidden(
+            text=json.dumps(payload), content_type="application/json"
+        )
+
+
+async def get_user_and_kind(request: web.Request) -> tuple[str, Kind]:
+    identity_policy = request.config_dict.get(IDENTITY_KEY)
+    if not identity_policy:
+        raise RuntimeError("Identity policy not configured")
+    auth_policy = request.config_dict.get(AUTZ_KEY)
+    if not auth_policy:
+        raise RuntimeError("Auth policy not configured")
+    assert isinstance(auth_policy, AuthPolicy)
+    identity = await identity_policy.identify(request)
+    if identity is None:
+        raise web.HTTPUnauthorized()
+    userid = await auth_policy.authorized_userid(identity)
+    if userid is None:
+        raise web.HTTPUnauthorized()
+    kind = auth_policy.get_kind(identity)
+    return userid, kind
+
+
+def _permission_to_primitive(perm: Permission) -> dict[str, str]:
+    return {"uri": perm.uri, "action": perm.action}
 
 
 class AdminClientABC(abc.ABC):
@@ -852,7 +902,7 @@ class AdminClientBase:
         method: str,
         path: str,
         *,
-        json: dict[str, Any] | None = None,
+        json: dict[str, Any] | list[dict[str, Any]] | None = None,
         params: Query | None = None,
         headers: Optional[CIMultiDict[str]] = None,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
@@ -1093,6 +1143,7 @@ class AdminClientBase:
     async def create_cluster(
         self,
         name: str,
+        headers: dict[str, str] | None = None,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
@@ -1110,10 +1161,45 @@ class AdminClientBase:
             payload["default_quota"]["total_running_jobs"] = str(
                 default_quota.total_running_jobs
             )
-        async with self._request("POST", "clusters", json=payload) as resp:
+
+        async with self._request(
+            "POST", "clusters", json=payload, headers=headers
+        ) as resp:
             resp.raise_for_status()
             raw_cluster = await resp.json()
             return self._parse_cluster_payload(raw_cluster)
+
+    async def ping(self):
+        path = "ping"
+        async with self._request("GET", path) as resp:
+            txt = await resp.text()
+            assert txt == "Pong"
+
+    async def secured_ping(self, headers: dict[str, str]):
+        path = "secured-ping"
+        async with self._request("GET", path, headers=headers) as resp:
+            txt = await resp.text()
+            assert txt == "Secured Pong"
+
+    async def get_missing_permissions(
+        self, name: str, payload: list[dict[str, Any]]
+    ) -> Sequence[Permission]:
+        path = f"users/{name}/permissions/check"
+        async with self._request("POST", path, json=payload) as resp:
+            if resp.status not in (200, 403):
+                await _raise_for_status(resp)
+            data = await resp.json()
+            if "missing" not in data:
+                assert resp.status == 403, f"unexpected response {resp.status}: {data}"
+                await _raise_for_status(resp)
+
+            return [_permission_from_primitive(p) for p in data["missing"]]
+
+    async def add_user(self, payload: dict[str, Any]) -> User:
+        path = "users"
+        async with self._request("POST", path, json=payload) as resp:
+            await _raise_for_status(resp)
+            return self._parse_user_payload(await resp.json())
 
     async def update_cluster(
         self,
@@ -1768,6 +1854,7 @@ class AdminClientBase:
         name: str,
         skip_auto_add_to_clusters: bool = False,
         user_default_credits: Decimal | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Org:
         payload = {
             "name": name,
@@ -1781,6 +1868,7 @@ class AdminClientBase:
             params={
                 "skip_auto_add_to_clusters": _to_query_bool(skip_auto_add_to_clusters)
             },
+            headers=headers,
         ) as resp:
             resp.raise_for_status()
             raw_org = await resp.json()
@@ -2191,6 +2279,7 @@ class AdminClientBase:
         org_name: str | None,
         is_default: bool = False,
         default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
+        headers: dict[str, str] | None = None,
     ) -> Project:
         payload = {
             "name": name,
@@ -2203,7 +2292,7 @@ class AdminClientBase:
         else:
             url = f"clusters/{cluster_name}/projects"
 
-        async with self._request("POST", url, json=payload) as resp:
+        async with self._request("POST", url, json=payload, headers=headers) as resp:
             resp.raise_for_status()
             return self._parse_project(await resp.json())
 
@@ -3501,7 +3590,6 @@ class AuthClient:
         self,
         name: str,
         permissions: Sequence[Union[Permission, Sequence[Permission]]],
-        token: Optional[str] = None,
     ) -> bool:
         if self._url is None:
             return True
@@ -3512,14 +3600,10 @@ class AuthClient:
         self,
         name: str,
         permissions: Sequence[Union[Permission, Sequence[Permission]]],
-        token: Optional[str] = None,
     ) -> Sequence[Permission]:
         assert permissions, "No permissions passed"
         if self._url is None:
             return []
-
-        path = f"users/{name}/permissions/check"
-        headers = AdminClient.generate_auth_headers(token)
 
         flat_permissions: list[Permission] = []
         for p in permissions:
@@ -3538,24 +3622,72 @@ class AuthClient:
             ):
                 lowest_by_uri[uri_str] = perm
 
-        payload: list[dict[str, Any]] = [asdict(p) for p in lowest_by_uri.values()]
-        async with self._request(
-            "POST", path, headers=headers, json=payload, raise_for_status=False
-        ) as resp:
-            if resp.status not in (200, 403):
-                await _raise_for_status(resp)
-            data = await resp.json()
-            if "missing" not in data:
-                assert resp.status == 403, f"unexpected response {resp.status}: {data}"
-                await _raise_for_status(resp)
-
-            return [_permission_from_primitive(p) for p in data["missing"]]
+        payload: list[dict[str, Any]] = [
+            {
+                **(d := asdict(p)),
+                "uri": str(d["uri"]) if isinstance(d.get("uri"), URL) else d["uri"],
+            }
+            for p in lowest_by_uri.values()
+        ]
+        async with self._adminClient as client:
+            return await client.get_missing_permissions(name=name, payload=payload)
 
     async def get_user(self, name: str, token: str) -> User:
         if self._url is None:
-            return User(name="user", email="user@apolo.us")
+            return User(name=name, email=f"{name}@apolo.us")
         headers = AdminClient.generate_auth_headers(token)
-        return await self._adminClient.get_user(name, headers=headers)
+        async with self._adminClient as client:
+            return await client.get_user(name, headers=headers)
+
+    def _generate_headers(self, token: Optional[str] = None) -> CIMultiDict[str]:
+        headers: CIMultiDict[str] = CIMultiDict()
+        if token:
+            headers[AUTHORIZATION] = BearerAuth(token).encode()
+        return headers
+
+    async def ping(self) -> None:
+        if self._url is None:
+            return
+        async with self._adminClient as client:
+            await client.ping()
+
+    async def secured_ping(self, token: Optional[str] = None) -> None:
+        if self._url is None:
+            return
+        headers = self._generate_headers(token)
+        async with self._adminClient as client:
+            await client.secured_ping(headers=headers)
+
+    def _serialize_user(self, user: User) -> dict[str, Any]:
+        return {"name": user.name, "email": user.email}
+
+    async def add_user(self, user: User) -> User:
+        payload = self._serialize_user(user)
+        async with self._adminClient as client:
+            return await client.add_user(payload=payload)
+
+    async def create_cluster(
+        self,
+        cluster_name: str,
+        headers: dict[str, str] | None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
+    ) -> Cluster:
+        async with self._adminClient as client:
+            return await client.create_cluster(
+                name=cluster_name, default_role=default_role, headers=headers
+            )
+
+    async def create_org(self, name: str, headers: dict[str, str] | None) -> Org:
+        async with self._adminClient as client:
+            return await client.create_org(name=name, headers=headers)
+
+    async def create_project(
+        self, name: str, cluster_name: str, headers: dict[str, str] | None
+    ) -> Project:
+        async with self._adminClient as client:
+            return await client.create_project(
+                name=name, cluster_name=cluster_name, headers=headers, org_name=None
+            )
 
 
 async def _raise_for_status(resp: aiohttp.ClientResponse) -> None:
