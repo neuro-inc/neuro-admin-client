@@ -191,14 +191,6 @@ class AdminClientABC(abc.ABC):
     @abstractmethod
     async def create_cluster(
         self,
-        cluster_name: str,
-        headers: dict[str, str] | None,
-        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
-    ) -> Cluster: ...
-
-    @abstractmethod
-    async def create_cluster(
-        self,
         name: str,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
@@ -3675,7 +3667,7 @@ class AuthClient:
     async def create_cluster(
         self,
         cluster_name: str,
-        headers: dict[str, str] | None,
+        headers: CIMultiDict[str] | None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> Cluster:
         async with self._adminClient as client:
@@ -3683,12 +3675,12 @@ class AuthClient:
                 name=cluster_name, default_role=default_role, headers=headers
             )
 
-    async def create_org(self, name: str, headers: dict[str, str] | None) -> Org:
+    async def create_org(self, name: str, headers: CIMultiDict[str] | None) -> Org:
         async with self._adminClient as client:
             return await client.create_org(name=name, headers=headers)
 
     async def create_project(
-        self, name: str, cluster_name: str, headers: dict[str, str] | None
+        self, name: str, cluster_name: str, headers: CIMultiDict[str] | None
     ) -> Project:
         async with self._adminClient as client:
             return await client.create_project(
