@@ -9,7 +9,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, List, Optional, Tuple, Union, overload
+from typing import Any, List, Tuple, Union, overload
 
 import aiohttp
 from aiohttp import ClientError, web
@@ -108,7 +108,7 @@ async def get_user_and_kind(request: web.Request) -> tuple[str, Kind]:
 
 
 def _permission_to_primitive(perm: Permission) -> dict[str, str]:
-    return {"uri": perm.uri, "action": perm.action}
+    return {"uri": str(perm.uri), "action": perm.action}
 
 
 class AdminClientABC(abc.ABC):
@@ -155,7 +155,7 @@ class AdminClientABC(abc.ABC):
         self,
         name: str,
         *,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
@@ -187,6 +187,14 @@ class AdminClientABC(abc.ABC):
 
     @abstractmethod
     async def get_cluster(self, name: str) -> Cluster: ...
+
+    @abstractmethod
+    async def create_cluster(
+        self,
+        cluster_name: str,
+        headers: dict[str, str] | None,
+        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
+    ) -> Cluster: ...
 
     @abstractmethod
     async def create_cluster(
@@ -904,7 +912,7 @@ class AdminClientBase:
         *,
         json: dict[str, Any] | list[dict[str, Any]] | None = None,
         params: Query | None = None,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         pass
 
@@ -971,9 +979,7 @@ class AdminClientBase:
     async def get_user(self, name: str) -> User: ...
 
     @overload
-    async def get_user(
-        self, name: str, *, headers: Optional[CIMultiDict[str]]
-    ) -> User: ...
+    async def get_user(self, name: str, *, headers: CIMultiDict[str]) -> User: ...
 
     @overload
     async def get_user(
@@ -1008,7 +1014,7 @@ class AdminClientBase:
         self,
         name: str,
         *,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
@@ -1143,7 +1149,7 @@ class AdminClientBase:
     async def create_cluster(
         self,
         name: str,
-        headers: dict[str, str] | None = None,
+        headers: CIMultiDict[str] | None = None,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
@@ -1169,13 +1175,13 @@ class AdminClientBase:
             raw_cluster = await resp.json()
             return self._parse_cluster_payload(raw_cluster)
 
-    async def ping(self):
+    async def ping(self) -> None:
         path = "ping"
         async with self._request("GET", path) as resp:
             txt = await resp.text()
             assert txt == "Pong"
 
-    async def secured_ping(self, headers: dict[str, str]):
+    async def secured_ping(self, headers: CIMultiDict[str]) -> None:
         path = "secured-ping"
         async with self._request("GET", path, headers=headers) as resp:
             txt = await resp.text()
@@ -1854,7 +1860,7 @@ class AdminClientBase:
         name: str,
         skip_auto_add_to_clusters: bool = False,
         user_default_credits: Decimal | None = None,
-        headers: dict[str, str] | None = None,
+        headers: CIMultiDict[str] | None = None,
     ) -> Org:
         payload = {
             "name": name,
@@ -2279,7 +2285,7 @@ class AdminClientBase:
         org_name: str | None,
         is_default: bool = False,
         default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
-        headers: dict[str, str] | None = None,
+        headers: CIMultiDict[str] | None = None,
     ) -> Project:
         payload = {
             "name": name,
@@ -2741,7 +2747,7 @@ class AdminClientDummy(AdminClientABC):
 
     @overload
     async def get_user(
-        self, name: str, *, headers: Optional[CIMultiDict[str]]
+        self, name: str, *, headers: CIMultiDict[str] | None
     ) -> User: ...
 
     @overload
@@ -2777,7 +2783,7 @@ class AdminClientDummy(AdminClientABC):
         self,
         name: str,
         *,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         include_orgs: bool = False,
         include_clusters: bool = False,
         include_projects: bool = False,
@@ -3528,9 +3534,9 @@ def _permission_from_primitive(perm: dict[str, str]) -> Permission:
 class AuthClient:
     def __init__(
         self,
-        url: Optional[URL],
+        url: URL | None,
         token: str,
-        trace_configs: Optional[list[aiohttp.TraceConfig]] = None,
+        trace_configs: list[aiohttp.TraceConfig] | None = None,
     ) -> None:
         if url is not None and not url:
             raise ValueError(
@@ -3565,9 +3571,9 @@ class AuthClient:
         method: str,
         path: str,
         *,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         json: Any = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Mapping[str, str] | None = None,
         raise_for_status: bool = True,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         url = self._make_url(path)
@@ -3639,7 +3645,7 @@ class AuthClient:
         async with self._adminClient as client:
             return await client.get_user(name, headers=headers)
 
-    def _generate_headers(self, token: Optional[str] = None) -> CIMultiDict[str]:
+    def _generate_headers(self, token: str | None = None) -> CIMultiDict[str]:
         headers: CIMultiDict[str] = CIMultiDict()
         if token:
             headers[AUTHORIZATION] = BearerAuth(token).encode()
@@ -3651,7 +3657,7 @@ class AuthClient:
         async with self._adminClient as client:
             await client.ping()
 
-    async def secured_ping(self, token: Optional[str] = None) -> None:
+    async def secured_ping(self, token: str | None = None) -> None:
         if self._url is None:
             return
         headers = self._generate_headers(token)
