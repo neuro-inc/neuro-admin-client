@@ -2823,6 +2823,7 @@ class AdminClientDummy(AdminClientABC):
     async def create_cluster(
         self,
         name: str,
+        headers: CIMultiDict[str] | None = None,
         default_credits: Decimal | None = None,
         default_quota: Quota = Quota(),
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
