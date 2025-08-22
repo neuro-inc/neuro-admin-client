@@ -22,6 +22,9 @@ JWT_IDENTITY_CLAIM = "https://platform.neuromation.io/user"
 JWT_IDENTITY_CLAIM_OPTIONS = ("identity", JWT_IDENTITY_CLAIM)
 JWT_KIND_CLAIM = "https://platform.neuromation.io/kind"
 
+JWT_JOB_ID_CLAIM = "https://platform.neuromation.io/job-id"
+JWT_JOB_ID_CLAIM_OPTIONS = ("job_id", JWT_JOB_ID_CLAIM)
+
 NEURO_AUTH_TOKEN_QUERY_PARAM = "neuro-auth-token"
 WS_BEARER = "bearer.apolo.us-"
 
