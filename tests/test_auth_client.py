@@ -1,11 +1,12 @@
 import pytest
+from multidict import CIMultiDict
 from yarl import URL
 
 from neuro_admin_client import (
     AuthClient,
     Permission,
 )
-from neuro_admin_client.entities import Action
+from neuro_admin_client.entities import Action, User
 
 
 class TestAction:
@@ -59,3 +60,69 @@ class TestClient:
     async def test_empty_url(self) -> None:
         with pytest.raises(ValueError):
             AuthClient(URL(), "<token>")
+
+
+class TestAuthClient:
+
+    async def test_create_cluster(self, auth_client: AuthClient) -> None:
+        headers = CIMultiDict({"Authorization": "Bearer test-token"})
+        cluster = await auth_client.create_cluster(
+            cluster_name="test-cluster",
+            headers=headers,
+        )
+        assert cluster.name == "test-cluster"
+
+    async def test_create_org(
+        self, auth_client: AuthClient, auth_headers: CIMultiDict[str]
+    ) -> None:
+        org = await auth_client.create_org(name="test-org", headers=auth_headers)
+        assert org.name == "test-org"
+
+    async def test_create_project(
+        self, auth_client: AuthClient, auth_headers: CIMultiDict[str]
+    ) -> None:
+        cluster_name = "test-cluster"
+        project = await auth_client.create_project(
+            name="test-project",
+            cluster_name=cluster_name,
+            headers=auth_headers,
+        )
+        assert project.name == "test-project"
+        assert project.cluster_name == cluster_name
+
+    async def test_add_user(self, auth_client: AuthClient) -> None:
+        user = User(name="alice", email="alice@example.com")
+        added = await auth_client.add_user(user)
+        assert added.name == user.name
+        assert added.email == user.email
+
+    async def test_get_user(self, auth_client: AuthClient) -> None:
+        user = User(
+            name="alice",
+            email="alice@example.com",
+            first_name="Alice",
+            last_name="Smith",
+        )
+        await auth_client.add_user(user)
+        fetched = await auth_client.get_user(name="alice", token="test-token")
+        assert fetched.name == user.name
+        assert fetched.email == user.email
+
+    async def test_check_user_permissions(self, auth_client: AuthClient) -> None:
+        permissions = [
+            Permission(uri="storage://test-cluster/user/folder", action=Action.READ)
+        ]
+        result = await auth_client.check_user_permissions("alice", permissions)
+        assert isinstance(result, bool)
+
+    async def test_get_missing_permissions(self, auth_client: AuthClient) -> None:
+        permissions = [
+            Permission(uri="storage://test-cluster/user/folder", action="read")
+        ]
+        missing = await auth_client.get_missing_permissions("alice", permissions)
+        assert isinstance(missing, list)
+        for perm in missing:
+            assert isinstance(perm, Permission)
+
+    async def test_ping(self, auth_client: AuthClient) -> None:
+        await auth_client.ping()

@@ -1174,12 +1174,6 @@ class AdminClientBase:
             txt = await resp.text()
             assert txt == "Pong"
 
-    async def secured_ping(self, headers: CIMultiDict[str]) -> None:
-        path = "secured-ping"
-        async with self._request("GET", path, headers=headers) as resp:
-            txt = await resp.text()
-            assert txt == "Secured Pong"
-
     async def get_missing_permissions(
         self, name: str, payload: list[dict[str, Any]]
     ) -> Sequence[Permission]:
@@ -3650,13 +3644,6 @@ class AuthClient:
             return
         async with self._adminClient as client:
             await client.ping()
-
-    async def secured_ping(self, token: str | None = None) -> None:
-        if self._url is None:
-            return
-        headers = self._generate_headers(token)
-        async with self._adminClient as client:
-            await client.secured_ping(headers=headers)
 
     def _serialize_user(self, user: User) -> dict[str, Any]:
         return {"name": user.name, "email": user.email}
