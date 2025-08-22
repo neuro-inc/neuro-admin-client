@@ -21,9 +21,7 @@ from .entities import Permission, User
 JWT_IDENTITY_CLAIM = "https://platform.neuromation.io/user"
 JWT_IDENTITY_CLAIM_OPTIONS = ("identity", JWT_IDENTITY_CLAIM)
 JWT_KIND_CLAIM = "https://platform.neuromation.io/kind"
-
 JWT_JOB_ID_CLAIM = "https://platform.neuromation.io/job-id"
-JWT_JOB_ID_CLAIM_OPTIONS = ("job_id", JWT_JOB_ID_CLAIM)
 
 NEURO_AUTH_TOKEN_QUERY_PARAM = "neuro-auth-token"
 WS_BEARER = "bearer.apolo.us-"
@@ -97,6 +95,18 @@ class AuthPolicy(AbstractAuthorizationPolicy):
                 if isinstance(value, str):
                     return value
             return None
+        except JWTError:
+            return None
+
+    def get_job_id_from_identity(self, identity: Optional[str]) -> Optional[str]:
+        if not identity:
+            return None
+        try:
+            claims = jwt.get_unverified_claims(identity)
+            val = claims.get(JWT_JOB_ID_CLAIM)
+            return (
+                val if isinstance(val, str) else (str(val) if val is not None else None)
+            )
         except JWTError:
             return None
 
