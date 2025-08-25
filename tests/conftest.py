@@ -9,11 +9,13 @@ from decimal import Decimal
 from typing import Any
 
 import aiohttp
-import aiohttp.web
+import aiohttp.web as web
 import pytest
+from multidict import CIMultiDict
 from yarl import URL
 
 from neuro_admin_client import (
+    AuthClient,
     Balance,
     Cluster,
     ClusterUser,
@@ -103,8 +105,8 @@ class AdminServer:
         new_user = User(
             name=payload["name"],
             email=payload["email"],
-            first_name=payload["first_name"],
-            last_name=payload["last_name"],
+            first_name=payload.get("first_name", ""),
+            last_name=payload.get("last_name", ""),
             created_at=datetime.datetime.now(datetime.timezone.utc),
         )
         self.users.append(new_user)
@@ -1219,6 +1221,12 @@ class AdminServer:
                 )
         raise aiohttp.web.HTTPNotFound
 
+    async def handle_user_check_permissions(self, request: web.Request) -> web.Response:
+        return web.json_response({"missing": []}, status=200)
+
+    async def handle_ping(self, request: web.Request) -> web.Response:
+        return web.Response(text="Pong")
+
     async def handle_project_user_delete(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
@@ -1264,6 +1272,10 @@ async def mock_admin_server() -> AsyncIterator[AdminServer]:
         app.router.add_routes(
             (
                 aiohttp.web.get(
+                    "/api/v1/ping",
+                    admin_server.handle_ping,
+                ),
+                aiohttp.web.get(
                     "/api/v1/users",
                     admin_server.handle_user_list,
                 ),
@@ -1274,6 +1286,10 @@ async def mock_admin_server() -> AsyncIterator[AdminServer]:
                 aiohttp.web.get(
                     "/api/v1/users/{uname}",
                     admin_server.handle_user_get,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/users/{name}/permissions/check",
+                    admin_server.handle_user_check_permissions,
                 ),
                 aiohttp.web.get(
                     "/api/v1/orgs",
@@ -1533,6 +1549,20 @@ async def mock_admin_server() -> AsyncIterator[AdminServer]:
     admin_server.address = api_address
     yield admin_server
     await runner.close()
+
+
+@pytest.fixture
+def auth_headers() -> CIMultiDict[str]:
+    return CIMultiDict({"Authorization": "Bearer test-token"})
+
+
+@pytest.fixture
+async def auth_client(mock_admin_server: AdminServer) -> AsyncIterator[AuthClient]:
+    token = "test-token"
+    url = URL(str(mock_admin_server.url))
+    client = AuthClient(url, token)
+    async with client:
+        yield client
 
 
 @pytest.fixture
