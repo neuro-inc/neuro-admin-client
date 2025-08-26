@@ -1,5 +1,3 @@
-from unittest.mock import Mock
-
 import pytest
 from aiohttp import BasicAuth
 from aiohttp.test_utils import make_mocked_request
@@ -8,10 +6,10 @@ from jose import jwt
 from neuro_admin_client.security import (
     JWT_IDENTITY_CLAIM,
     JWT_KIND_CLAIM,
-    AuthPolicy,
     AuthScheme,
     IdentityPolicy,
     Kind,
+    get_kind,
 )
 
 
@@ -108,11 +106,9 @@ def test_kind() -> None:
     identity = jwt.encode(
         {JWT_IDENTITY_CLAIM: "test", JWT_KIND_CLAIM: Kind.CLUSTER}, "secret"
     )
-    auth_policy = AuthPolicy(Mock())
-    assert auth_policy.get_kind(identity) == Kind.CLUSTER
+    assert get_kind(identity) == Kind.CLUSTER
 
 
 def test_default() -> None:
     identity = jwt.encode({JWT_IDENTITY_CLAIM: "test"}, "secret")
-    auth_policy = AuthPolicy(Mock())
-    assert auth_policy.get_kind(identity) == Kind.USER
+    assert get_kind(identity) == Kind.USER

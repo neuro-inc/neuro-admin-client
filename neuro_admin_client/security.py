@@ -34,6 +34,44 @@ NEURO_AUTH_TOKEN_QUERY_PARAM = "neuro-auth-token"
 WS_BEARER = "bearer.apolo.us-"
 
 
+def _extract_claim(identity: Optional[str], claim_name: str) -> Optional[str]:
+    if not identity:
+        return None
+    try:
+        claims = jwt.get_unverified_claims(identity)
+        value: Any = claims.get(claim_name)
+        if isinstance(value, str):
+            return value
+        if value is not None:
+            return str(value)
+        return None
+    except JWTError:
+        return None
+
+
+def get_untrusted_user_name(identity: Optional[str]) -> Optional[str]:
+    if identity is None:
+        return "user"
+
+    for claim in JWT_IDENTITY_CLAIM_OPTIONS:
+        value = _extract_claim(identity, claim)
+        if value:
+            return value
+    return None
+
+
+def get_job_id_from_identity(identity: Optional[str]) -> Optional[str]:
+    return _extract_claim(identity, JWT_JOB_ID_CLAIM)
+
+
+def get_kind(identity: str) -> Kind:
+    kind_str = _extract_claim(identity, JWT_KIND_CLAIM)
+    try:
+        return Kind(kind_str) if kind_str else Kind.USER
+    except ValueError:
+        return Kind.USER
+
+
 async def check_permissions(
     request: web.Request, permissions: Sequence[Union[Permission, Sequence[Permission]]]
 ) -> None:
@@ -118,41 +156,8 @@ class AuthPolicy(AbstractAuthorizationPolicy):
     def __init__(self, auth_client: AuthClient) -> None:
         self._auth_client = auth_client
 
-    def get_untrusted_user_name(self, identity: Optional[str]) -> Optional[str]:
-        if identity is None or self._auth_client.is_anonymous_access_allowed:
-            return "user"
-
-        try:
-            claims = jwt.get_unverified_claims(identity)
-            for identity_claim in JWT_IDENTITY_CLAIM_OPTIONS:
-                value = claims[identity_claim]
-                if isinstance(value, str):
-                    return value
-            return None
-        except JWTError:
-            return None
-
-    def get_job_id_from_identity(self, identity: Optional[str]) -> Optional[str]:
-        if not identity:
-            return None
-        try:
-            claims = jwt.get_unverified_claims(identity)
-            val = claims.get(JWT_JOB_ID_CLAIM)
-            return (
-                val if isinstance(val, str) else (str(val) if val is not None else None)
-            )
-        except JWTError:
-            return None
-
     async def authorized_userid(self, identity: str) -> Optional[str]:
-        return self.get_untrusted_user_name(identity)
-
-    def get_kind(self, identity: str) -> Kind:
-        try:
-            claims = jwt.get_unverified_claims(identity)
-            return Kind(claims.get(JWT_KIND_CLAIM, Kind.USER))
-        except JWTError:
-            return Kind.USER
+        return get_untrusted_user_name(identity)
 
     async def permits(
         self,
@@ -160,7 +165,7 @@ class AuthPolicy(AbstractAuthorizationPolicy):
         permission: Union[str, Enum],
         context: Any = None,
     ) -> bool:
-        name = self.get_untrusted_user_name(identity)
+        name = get_untrusted_user_name(identity)
         if not name:
             return False
         return await self._auth_client.check_user_permissions(name, context)
