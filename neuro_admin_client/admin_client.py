@@ -2555,6 +2555,12 @@ class AdminClient(AdminClientBase, AdminClientABC):
     async def __aexit__(self, *args: Any) -> None:
         await self.aclose()
 
+    async def connect(self) -> None:
+        self._init()
+
+    async def close(self) -> None:
+        await self.aclose()
+
     async def aclose(self) -> None:
         if not self._client:
             return
@@ -2671,6 +2677,12 @@ class AdminClientDummy(AdminClientABC):
         return self
 
     async def __aexit__(self, *args: Any) -> None:
+        pass
+
+    async def connect(self) -> None:
+        pass
+
+    async def close(self) -> None:
         pass
 
     async def aclose(self) -> None:

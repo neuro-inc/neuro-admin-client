@@ -34,14 +34,21 @@ class AuthClient:
                 "url argument should be http URL or None for secure-less configurations"
             )
         self._token = token
-        self._admin_client = AdminClient(base_url=url, service_token=token)
-        headers = AdminClient.generate_auth_headers(token)
-        self._client = aiohttp.ClientSession(
-            headers=headers, trace_configs=trace_configs
+        self._admin_client = AdminClient(
+            base_url=url,
+            service_token=token,
+            trace_configs=trace_configs or [],
         )
         self._url = url
 
+    async def connect(self) -> None:
+        await self._admin_client.connect()
+
+    async def close(self) -> None:
+        await self._admin_client.close()
+
     async def __aenter__(self) -> AuthClient:
+        await self.connect()
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -52,9 +59,6 @@ class AuthClient:
         if path.startswith("/"):
             path = path[1:]
         return self._url / path
-
-    async def close(self) -> None:
-        await self._client.close()
 
     @property
     def is_anonymous_access_allowed(self) -> bool:
@@ -93,15 +97,15 @@ class AuthClient:
             }
             for p in flat_permissions
         ]
-        async with self._admin_client as client:
-            return await client.get_missing_permissions(name=name, payload=payload)
+        return await self._admin_client.get_missing_permissions(
+            name=name, payload=payload
+        )
 
     async def get_user(self, name: str, token: str) -> User:
         if self._url is None:
             return User(name=name, email=f"{name}@apolo.us")
         headers = AdminClient.generate_auth_headers(token)
-        async with self._admin_client as client:
-            return await client.get_user(name, headers=headers)
+        return await self._admin_client.get_user(name, headers=headers)
 
     def _generate_headers(self, token: str | None = None) -> CIMultiDict[str]:
         headers: CIMultiDict[str] = CIMultiDict()
@@ -112,16 +116,14 @@ class AuthClient:
     async def ping(self) -> None:
         if self._url is None:
             return
-        async with self._admin_client as client:
-            await client.ping()
+        await self._admin_client.ping()
 
     def _serialize_user(self, user: User) -> dict[str, Any]:
         return {"name": user.name, "email": user.email}
 
     async def add_user(self, user: User) -> User:
         payload = self._serialize_user(user)
-        async with self._admin_client as client:
-            return await client.add_user(payload=payload)
+        return await self._admin_client.add_user(payload=payload)
 
     async def create_cluster(
         self,
@@ -129,19 +131,16 @@ class AuthClient:
         headers: CIMultiDict[str] | None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> Cluster:
-        async with self._admin_client as client:
-            return await client.create_cluster(
-                name=cluster_name, default_role=default_role, headers=headers
-            )
+        return await self._admin_client.create_cluster(
+            name=cluster_name, default_role=default_role, headers=headers
+        )
 
     async def create_org(self, name: str, headers: CIMultiDict[str] | None) -> Org:
-        async with self._admin_client as client:
-            return await client.create_org(name=name, headers=headers)
+        return await self._admin_client.create_org(name=name, headers=headers)
 
     async def create_project(
         self, name: str, cluster_name: str, headers: CIMultiDict[str] | None
     ) -> Project:
-        async with self._admin_client as client:
-            return await client.create_project(
-                name=name, cluster_name=cluster_name, headers=headers, org_name=None
-            )
+        return await self._admin_client.create_project(
+            name=name, cluster_name=cluster_name, headers=headers, org_name=None
+        )
