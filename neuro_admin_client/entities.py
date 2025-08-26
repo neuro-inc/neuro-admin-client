@@ -2,7 +2,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import Any, List, Optional, Union, cast
+from typing import Any, List, Optional, Self, Union, cast
 
 from yarl import URL
 
@@ -330,6 +330,13 @@ class Permission:
 
     def can_write(self) -> bool:
         return self.check_action_allowed(Action.WRITE)
+
+    def to_payload(self) -> dict[str, str]:
+        return {"uri": str(self.uri), "action": self.action.value}
+
+    @classmethod
+    def from_payload(cls, perm: dict[str, str]) -> Self:
+        return cls(uri=perm["uri"], action=perm["action"])
 
     def __str__(self) -> str:
         return f"Permission(uri={self.uri!s}, action={self.action.value})"

@@ -1136,7 +1136,7 @@ class AdminClientBase:
                 assert resp.status == 403, f"unexpected response {resp.status}: {data}"
                 await _raise_for_status(resp)
 
-            return [_permission_from_primitive(p) for p in data["missing"]]
+            return [Permission.from_payload(p) for p in data["missing"]]
 
     async def add_user(self, payload: dict[str, Any]) -> User:
         path = "users"
@@ -3475,10 +3475,6 @@ class AdminClientDummy(AdminClientABC):
         user_name: str | None = None,
     ) -> None:
         pass
-
-
-def _permission_from_primitive(perm: dict[str, str]) -> Permission:
-    return Permission(uri=perm["uri"], action=perm["action"])
 
 
 async def _raise_for_status(resp: aiohttp.ClientResponse) -> None:

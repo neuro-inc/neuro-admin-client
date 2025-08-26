@@ -89,14 +89,10 @@ async def check_permissions(
         raise RuntimeError(e) from e
 
     if missing:
-        payload = {"missing": [_permission_to_primitive(p) for p in missing]}
+        payload = {"missing": [p.to_payload() for p in missing]}
         raise web.HTTPForbidden(
             text=json.dumps(payload), content_type="application/json"
         )
-
-
-def _permission_to_primitive(perm: Permission) -> dict[str, str]:
-    return {"uri": str(perm.uri), "action": perm.action}
 
 
 class AuthScheme(str, Enum):
