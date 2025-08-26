@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from multidict import CIMultiDict
 from yarl import URL
@@ -126,3 +128,72 @@ class TestAuthClient:
 
     async def test_ping(self, auth_client: AuthClient) -> None:
         await auth_client.ping()
+
+    async def test_get_authorized_entities_all_granted(
+        self, auth_client: AuthClient
+    ) -> None:
+        user = "alice"
+        entities = ["foo", "bar", "baz"]
+        global_perm = Permission(uri="org://", action=Action.LIST)
+
+        with patch.object(
+            auth_client, "get_missing_permissions", new=AsyncMock(return_value=[])
+        ):
+            result = await auth_client.get_authorized_entities(
+                user_name=user,
+                entities=entities,
+                per_entity_perms=lambda e: [
+                    Permission(uri=f"org://{e}", action=Action.READ)
+                ],
+                global_perm=global_perm,
+            )
+        assert result == entities
+
+    async def test_get_authorized_entities_partial_perms(
+        self, auth_client: AuthClient
+    ) -> None:
+        missed_org = "bar"
+        missing = [Permission(uri=f"org://{missed_org}", action=Action.READ)]
+
+        user = "alice"
+        org_names = ["foo", missed_org, "baz"]
+
+        with patch.object(
+            auth_client, "get_missing_permissions", new=AsyncMock(return_value=missing)
+        ):
+            result = await auth_client.get_authorized_entities(
+                user_name=user,
+                entities=org_names,
+                per_entity_perms=lambda e: [
+                    Permission(uri=f"org://{e}", action=Action.READ)
+                ],
+                global_perm=None,
+            )
+
+        assert result == ["foo", "baz"]
+
+    async def test_get_authorized_entities_none_granted(
+        self, auth_client: AuthClient
+    ) -> None:
+        missing = [
+            Permission(uri="org://foo", action=Action.READ),
+            Permission(uri="org://bar", action=Action.READ),
+            Permission(uri="org://baz", action=Action.READ),
+        ]
+
+        user = "bob"
+        org_names = ["foo", "bar", "baz"]
+
+        with patch.object(
+            auth_client, "get_missing_permissions", new=AsyncMock(return_value=missing)
+        ):
+            result = await auth_client.get_authorized_entities(
+                user_name=user,
+                entities=org_names,
+                per_entity_perms=lambda e: [
+                    Permission(uri=f"org://{e}", action=Action.READ)
+                ],
+                global_perm=None,
+            )
+
+        assert result == []

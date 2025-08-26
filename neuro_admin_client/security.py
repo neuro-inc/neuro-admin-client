@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Optional,
+    Union,
+    cast,
+)
 
 from aiohttp import ClientError, web
 from aiohttp.hdrs import AUTHORIZATION, SEC_WEBSOCKET_PROTOCOL

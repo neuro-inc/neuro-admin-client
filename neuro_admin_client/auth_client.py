@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict
-from typing import Any, Union
+from typing import Any, Callable, List, Optional, TypeVar, Union
 
 import aiohttp
 from aiohttp.hdrs import AUTHORIZATION
@@ -20,6 +20,8 @@ from neuro_admin_client.entities import (
 )
 
 from .admin_client import AdminClient
+
+T = TypeVar("T")
 
 
 class AuthClient:
@@ -144,3 +146,28 @@ class AuthClient:
         return await self._admin_client.create_project(
             name=name, cluster_name=cluster_name, headers=headers, org_name=None
         )
+
+    async def get_authorized_entities(
+        self,
+        user_name: str,
+        entities: Iterable[T],
+        per_entity_perms: Callable[[T], Sequence[Permission]],
+        global_perm: Optional[Permission] = None,
+    ) -> List[T]:
+        entities = list(entities)
+        all_perms: list[Permission] = []
+        if global_perm is not None:
+            all_perms.append(global_perm)
+        for e in entities:
+            all_perms.extend(per_entity_perms(e))
+        missing = set(await self.get_missing_permissions(user_name, all_perms))
+        if global_perm is not None and global_perm not in missing:
+            return entities
+
+        # per-entity OR
+        allowed: list[T] = []
+        for e in entities:
+            perms = per_entity_perms(e)
+            if any(p not in missing for p in perms):
+                allowed.append(e)
+        return allowed
