@@ -135,22 +135,12 @@ class AuthClient:
             else:
                 flat_permissions.extend(p)
 
-        # Deduplicate by URI -> keep the lowest action
-        lowest_by_uri: dict[str, Permission] = {}
-        for perm in flat_permissions:
-            uri_str = str(perm.uri)
-            if (
-                uri_str not in lowest_by_uri
-                or perm.action < lowest_by_uri[uri_str].action
-            ):
-                lowest_by_uri[uri_str] = perm
-
         payload: list[dict[str, Any]] = [
             {
                 **(d := asdict(p)),
                 "uri": str(d["uri"]) if isinstance(d.get("uri"), URL) else d["uri"],
             }
-            for p in lowest_by_uri.values()
+            for p in flat_permissions
         ]
         async with self._adminClient as client:
             return await client.get_missing_permissions(name=name, payload=payload)
