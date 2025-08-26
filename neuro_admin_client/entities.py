@@ -2,8 +2,9 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import Any, List, Optional, Self, Union, cast
+from typing import Any, List, Optional, Union, cast
 
+from typing_extensions import Self
 from yarl import URL
 
 __all__ = [
