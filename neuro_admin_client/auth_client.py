@@ -9,7 +9,7 @@ import aiohttp
 from aiohttp import ClientError, web
 from aiohttp.hdrs import AUTHORIZATION
 from aiohttp_security import check_authorized
-from aiohttp_security.api import AUTZ_KEY, IDENTITY_KEY
+from aiohttp_security.api import AUTZ_KEY
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -24,7 +24,7 @@ from neuro_admin_client.entities import (
 )
 
 from .admin_client import AdminClient
-from .security import AuthPolicy, Kind
+from .security import AuthPolicy
 
 
 async def check_permissions(
