@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
-from aiohttp.client_exceptions import ClientResponseError
+from aiohttp import ClientError, web
 from aiohttp.hdrs import AUTHORIZATION, SEC_WEBSOCKET_PROTOCOL
 from aiohttp.helpers import BasicAuth
 from aiohttp.web import Application, Request, StreamResponse
-from aiohttp_security import AbstractAuthorizationPolicy, AbstractIdentityPolicy, setup
+from aiohttp_security import (
+    AbstractAuthorizationPolicy,
+    AbstractIdentityPolicy,
+    check_authorized,
+    setup,
+)
+from aiohttp_security.api import AUTZ_KEY
 from jose import jwt
 from jose.exceptions import JWTError
 
@@ -16,7 +23,7 @@ if TYPE_CHECKING:
     from . import AuthClient
 
 from .bearer_auth import BearerAuth
-from .entities import Permission, User
+from .entities import Permission
 
 JWT_IDENTITY_CLAIM = "https://platform.neuromation.io/user"
 JWT_IDENTITY_CLAIM_OPTIONS = ("identity", JWT_IDENTITY_CLAIM)
@@ -25,6 +32,33 @@ JWT_JOB_ID_CLAIM = "https://platform.neuromation.io/job-id"
 
 NEURO_AUTH_TOKEN_QUERY_PARAM = "neuro-auth-token"
 WS_BEARER = "bearer.apolo.us-"
+
+
+async def check_permissions(
+    request: web.Request, permissions: Sequence[Union[Permission, Sequence[Permission]]]
+) -> None:
+    user_name = await check_authorized(request)  # current implementation uses
+    # get_untrusted_user_name function
+    auth_policy = request.config_dict.get(AUTZ_KEY)
+    if not auth_policy:
+        raise RuntimeError("Auth policy not configured")
+    assert isinstance(auth_policy, AuthPolicy)
+
+    try:
+        missing = await auth_policy.get_missing_permissions(user_name, permissions)
+    except ClientError as e:
+        # re-wrap in order not to expose the client
+        raise RuntimeError(e) from e
+
+    if missing:
+        payload = {"missing": [_permission_to_primitive(p) for p in missing]}
+        raise web.HTTPForbidden(
+            text=json.dumps(payload), content_type="application/json"
+        )
+
+
+def _permission_to_primitive(perm: Permission) -> dict[str, str]:
+    return {"uri": str(perm.uri), "action": perm.action}
 
 
 class AuthScheme(str, Enum):
@@ -84,7 +118,7 @@ class AuthPolicy(AbstractAuthorizationPolicy):
     def __init__(self, auth_client: AuthClient) -> None:
         self._auth_client = auth_client
 
-    def get_user_name_from_identity(self, identity: Optional[str]) -> Optional[str]:
+    def get_untrusted_user_name(self, identity: Optional[str]) -> Optional[str]:
         if identity is None or self._auth_client.is_anonymous_access_allowed:
             return "user"
 
@@ -110,27 +144,8 @@ class AuthPolicy(AbstractAuthorizationPolicy):
         except JWTError:
             return None
 
-    async def authorized_user(self, identity: str) -> Optional[User]:
-        """Retrieve authorized user object (works same as authorized_userid)
-
-        Return the user object identified by the identity
-        or 'None' if no user exists related to the identity.
-        """
-        name = self.get_user_name_from_identity(identity)
-        if not name:
-            return None
-        try:
-            # NOTE: here we make a call to the auth service on behalf of the
-            # actual user, not a service.
-            return await self._auth_client.get_user(name, token=identity)
-        except ClientResponseError:
-            return None
-
     async def authorized_userid(self, identity: str) -> Optional[str]:
-        user = await self.authorized_user(identity)
-        if user:
-            return user.name
-        return None
+        return self.get_untrusted_user_name(identity)
 
     def get_kind(self, identity: str) -> Kind:
         try:
@@ -145,7 +160,7 @@ class AuthPolicy(AbstractAuthorizationPolicy):
         permission: Union[str, Enum],
         context: Any = None,
     ) -> bool:
-        name = self.get_user_name_from_identity(identity)
+        name = self.get_untrusted_user_name(identity)
         if not name:
             return False
         return await self._auth_client.check_user_permissions(name, context)

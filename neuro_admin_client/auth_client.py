@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from dataclasses import asdict
 from typing import Any, Union
 
 import aiohttp
-from aiohttp import ClientError, web
 from aiohttp.hdrs import AUTHORIZATION
-from aiohttp_security import check_authorized
-from aiohttp_security.api import AUTZ_KEY
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -24,33 +20,6 @@ from neuro_admin_client.entities import (
 )
 
 from .admin_client import AdminClient
-from .security import AuthPolicy
-
-
-async def check_permissions(
-    request: web.Request, permissions: Sequence[Union[Permission, Sequence[Permission]]]
-) -> None:
-    user_name = await check_authorized(request)
-    auth_policy = request.config_dict.get(AUTZ_KEY)
-    if not auth_policy:
-        raise RuntimeError("Auth policy not configured")
-    assert isinstance(auth_policy, AuthPolicy)
-
-    try:
-        missing = await auth_policy.get_missing_permissions(user_name, permissions)
-    except ClientError as e:
-        # re-wrap in order not to expose the client
-        raise RuntimeError(e) from e
-
-    if missing:
-        payload = {"missing": [_permission_to_primitive(p) for p in missing]}
-        raise web.HTTPForbidden(
-            text=json.dumps(payload), content_type="application/json"
-        )
-
-
-def _permission_to_primitive(perm: Permission) -> dict[str, str]:
-    return {"uri": str(perm.uri), "action": perm.action}
 
 
 class AuthClient:
