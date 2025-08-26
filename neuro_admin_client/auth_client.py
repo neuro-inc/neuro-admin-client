@@ -49,24 +49,6 @@ async def check_permissions(
         )
 
 
-async def get_user_and_kind(request: web.Request) -> tuple[str, Kind]:
-    identity_policy = request.config_dict.get(IDENTITY_KEY)
-    if not identity_policy:
-        raise RuntimeError("Identity policy not configured")
-    auth_policy = request.config_dict.get(AUTZ_KEY)
-    if not auth_policy:
-        raise RuntimeError("Auth policy not configured")
-    assert isinstance(auth_policy, AuthPolicy)
-    identity = await identity_policy.identify(request)
-    if identity is None:
-        raise web.HTTPUnauthorized()
-    userid = await auth_policy.authorized_userid(identity)
-    if userid is None:
-        raise web.HTTPUnauthorized()
-    kind = auth_policy.get_kind(identity)
-    return userid, kind
-
-
 def _permission_to_primitive(perm: Permission) -> dict[str, str]:
     return {"uri": str(perm.uri), "action": perm.action}
 
