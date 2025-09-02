@@ -28,6 +28,8 @@ from jose.exceptions import JWTError
 if TYPE_CHECKING:
     from . import AuthClient
 
+from aiohttp.client_exceptions import ClientResponseError
+
 from .bearer_auth import BearerAuth
 from .entities import Permission
 
@@ -159,7 +161,16 @@ class AuthPolicy(AbstractAuthorizationPolicy):
         self._auth_client = auth_client
 
     async def authorized_userid(self, identity: str) -> Optional[str]:
-        return get_untrusted_user_name(identity)
+        name = get_untrusted_user_name(identity)
+        if not name:
+            return None
+        try:
+            # NOTE: here we make a call to the auth service on behalf of the
+            # actual user, not a service.
+            user = await self._auth_client.get_user(name, token=identity)
+            return user.name
+        except ClientResponseError:
+            return None
 
     async def permits(
         self,
