@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from multidict import CIMultiDict
 from yarl import URL
 
 from neuro_admin_client import (
@@ -65,32 +64,6 @@ class TestClient:
 
 
 class TestAuthClient:
-
-    async def test_create_cluster(self, auth_client: AuthClient) -> None:
-        headers = CIMultiDict({"Authorization": "Bearer test-token"})
-        cluster = await auth_client.create_cluster(
-            cluster_name="test-cluster",
-            headers=headers,
-        )
-        assert cluster.name == "test-cluster"
-
-    async def test_create_org(
-        self, auth_client: AuthClient, auth_headers: CIMultiDict[str]
-    ) -> None:
-        org = await auth_client.create_org(name="test-org", headers=auth_headers)
-        assert org.name == "test-org"
-
-    async def test_create_project(
-        self, auth_client: AuthClient, auth_headers: CIMultiDict[str]
-    ) -> None:
-        cluster_name = "test-cluster"
-        project = await auth_client.create_project(
-            name="test-project",
-            cluster_name=cluster_name,
-            headers=auth_headers,
-        )
-        assert project.name == "test-project"
-        assert project.cluster_name == cluster_name
 
     async def test_add_user(self, auth_client: AuthClient) -> None:
         user = User(name="alice", email="alice@example.com")

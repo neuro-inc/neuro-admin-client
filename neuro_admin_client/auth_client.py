@@ -11,11 +11,7 @@ from yarl import URL
 
 from neuro_admin_client.bearer_auth import BearerAuth
 from neuro_admin_client.entities import (
-    Cluster,
-    ClusterUserRoleType,
-    Org,
     Permission,
-    Project,
     User,
 )
 
@@ -126,26 +122,6 @@ class AuthClient:
     async def add_user(self, user: User) -> User:
         payload = self._serialize_user(user)
         return await self._admin_client.add_user(payload=payload)
-
-    async def create_cluster(
-        self,
-        cluster_name: str,
-        headers: CIMultiDict[str] | None,
-        default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
-    ) -> Cluster:
-        return await self._admin_client.create_cluster(
-            name=cluster_name, default_role=default_role, headers=headers
-        )
-
-    async def create_org(self, name: str, headers: CIMultiDict[str] | None) -> Org:
-        return await self._admin_client.create_org(name=name, headers=headers)
-
-    async def create_project(
-        self, name: str, cluster_name: str, headers: CIMultiDict[str] | None
-    ) -> Project:
-        return await self._admin_client.create_project(
-            name=name, cluster_name=cluster_name, headers=headers, org_name=None
-        )
 
     async def get_authorized_entities(
         self,
