@@ -1,8 +1,36 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import List, Optional
+from typing import Any, List, Optional, Union, cast
+
+from typing_extensions import Self
+from yarl import URL
+
+__all__ = [
+    "FullNameMixin",
+    "UserInfo",
+    "User",
+    "Balance",
+    "Quota",
+    "ClusterUserRoleType",
+    "Cluster",
+    "OrgNotificationIntervals",
+    "Org",
+    "OrgUserRoleType",
+    "OrgUser",
+    "OrgUserWithInfo",
+    "OrgCluster",
+    "ClusterUser",
+    "ClusterUserWithInfo",
+    "ProjectUserRoleType",
+    "Project",
+    "ProjectUser",
+    "ProjectUserWithInfo",
+    "OrderedEnum",
+    "Action",
+    "Permission",
+]
 
 
 class FullNameMixin:
@@ -31,7 +59,7 @@ class UserInfo(FullNameMixin):
 @dataclass(frozen=True)
 class User(FullNameMixin):
     name: str
-    email: str
+    email: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -220,3 +248,96 @@ class ProjectUser:
 @dataclass(frozen=True)
 class ProjectUserWithInfo(ProjectUser):
     user_info: UserInfo
+
+
+class OrderedEnum(str, Enum):
+    _order: int
+
+    def __new__(cls, value: str) -> "OrderedEnum":
+        order = len(cls.__members__)
+        obj = cast("OrderedEnum", str.__new__(cls, value))  # type: ignore[redundant-cast]
+        obj._value_ = value
+        obj._order = order
+        return obj
+
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order >= other._order
+        return NotImplemented
+
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order > other._order
+        return NotImplemented
+
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order <= other._order
+        return NotImplemented
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self._order < other._order
+        return NotImplemented
+
+
+@unique
+class Action(OrderedEnum):
+    DENY = "deny"
+    LIST = "list"
+    READ = "read"
+    WRITE = "write"
+    MANAGE = "manage"
+
+    @classmethod
+    def public(cls) -> list["Action"]:
+        return [cls.READ, cls.WRITE, cls.MANAGE]
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return self.__str__().__repr__()
+
+
+def check_action_allowed(actual: Action, requested: Union[Action, str]) -> bool:
+    if isinstance(requested, str):
+        requested = Action(requested)
+    return actual >= requested
+
+
+@dataclass(frozen=True)
+class Permission:
+    uri: URL
+    action: Action
+
+    def __init__(self, uri: Any, action: Union[Action, str]):
+        object.__setattr__(self, "uri", uri if isinstance(uri, URL) else URL(uri))
+        if isinstance(action, str):
+            action = Action(action)
+        object.__setattr__(self, "action", action)
+
+    def with_manage_action(self) -> "Permission":
+        return replace(self, action=Action.MANAGE)
+
+    def check_action_allowed(self, requested: Union[Action, str]) -> bool:
+        return check_action_allowed(self.action, requested)
+
+    def can_list(self) -> bool:
+        return self.check_action_allowed(Action.LIST)
+
+    def can_read(self) -> bool:
+        return self.check_action_allowed(Action.READ)
+
+    def can_write(self) -> bool:
+        return self.check_action_allowed(Action.WRITE)
+
+    def to_payload(self) -> dict[str, str]:
+        return {"uri": str(self.uri), "action": self.action.value}
+
+    @classmethod
+    def from_payload(cls, perm: dict[str, str]) -> Self:
+        return cls(uri=perm["uri"], action=perm["action"])
+
+    def __str__(self) -> str:
+        return f"Permission(uri={self.uri!s}, action={self.action.value})"
