@@ -1124,6 +1124,13 @@ class AdminClientBase:
             txt = await resp.text()
             assert txt == "Pong"
 
+    async def verify_token(self, name: str, headers: CIMultiDict[str]) -> None:
+        path = f"users/{name}/token/verify"
+        async with self._request("POST", path, headers=headers) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+            assert data["verified"], data
+
     async def get_missing_permissions(
         self, name: str, payload: list[dict[str, Any]]
     ) -> Sequence[Permission]:
