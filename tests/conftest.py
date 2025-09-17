@@ -1224,6 +1224,9 @@ class AdminServer:
     async def handle_user_check_permissions(self, request: web.Request) -> web.Response:
         return web.json_response({"missing": []}, status=200)
 
+    async def handle_verify_token(self, request: web.Request) -> web.Response:
+        return web.json_response({"verified": True}, status=200)
+
     async def handle_ping(self, request: web.Request) -> web.Response:
         return web.Response(text="Pong")
 
@@ -1290,6 +1293,10 @@ async def mock_admin_server() -> AsyncIterator[AdminServer]:
                 aiohttp.web.post(
                     "/api/v1/users/{name}/permissions/check",
                     admin_server.handle_user_check_permissions,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/users/{name}/token/verify",
+                    admin_server.handle_verify_token,
                 ),
                 aiohttp.web.get(
                     "/api/v1/orgs",
