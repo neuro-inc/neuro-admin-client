@@ -1,3 +1,4 @@
+from contextlib import nullcontext as does_not_raise
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -71,7 +72,7 @@ class TestAuthClient:
         assert added.name == user.name
         assert added.email == user.email
 
-    async def test_get_user(self, auth_client: AuthClient) -> None:
+    async def test_verify_token(self, auth_client: AuthClient) -> None:
         user = User(
             name="alice",
             email="alice@example.com",
@@ -79,9 +80,8 @@ class TestAuthClient:
             last_name="Smith",
         )
         await auth_client.add_user(user)
-        fetched = await auth_client.get_user(name="alice", token="test-token")
-        assert fetched.name == user.name
-        assert fetched.email == user.email
+        with does_not_raise():
+            await auth_client.verify_token(name="alice", token="test-token")
 
     async def test_check_user_permissions(self, auth_client: AuthClient) -> None:
         permissions = [

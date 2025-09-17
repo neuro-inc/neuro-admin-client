@@ -167,8 +167,8 @@ class AuthPolicy(AbstractAuthorizationPolicy):
         try:
             # NOTE: here we make a call to the auth service on behalf of the
             # actual user, not a service.
-            user = await self._auth_client.get_user(name, token=identity)
-            return user.name
+            await self._auth_client.verify_token(name, token=identity)
+            return name
         except ClientResponseError:
             return None
 

@@ -99,11 +99,11 @@ class AuthClient:
             name=name, payload=payload
         )
 
-    async def get_user(self, name: str, token: str) -> User:
+    async def verify_token(self, name: str, token: str) -> None:
         if self._url is None:
-            return User(name=name, email=f"{name}@apolo.us")
+            return
         headers = AdminClient.generate_auth_headers(token)
-        return await self._admin_client.get_user(name, headers=headers)
+        await self._admin_client.verify_token(name, headers=headers)
 
     def _generate_headers(self, token: str | None = None) -> CIMultiDict[str]:
         headers: CIMultiDict[str] = CIMultiDict()
