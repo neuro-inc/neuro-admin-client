@@ -123,6 +123,23 @@ class AuthClient:
         payload = self._serialize_user(user)
         return await self._admin_client.add_user(payload=payload)
 
+    async def get_user_token(
+        self,
+        name: str,
+        new_token_uri: str | None = None,
+        job_id: str | None = None,
+        token: str | None = None,
+    ) -> str:
+        if self._url is None:
+            return ""
+        payload = {}
+        if new_token_uri:
+            payload["uri"] = new_token_uri
+        if job_id:
+            payload["job_id"] = job_id
+
+        return await self._admin_client.get_user_token(name, payload, token)
+
     async def get_authorized_entities(
         self,
         user_name: str,

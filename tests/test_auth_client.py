@@ -73,15 +73,12 @@ class TestAuthClient:
         assert added.email == user.email
 
     async def test_verify_token(self, auth_client: AuthClient) -> None:
-        user = User(
-            name="alice",
-            email="alice@example.com",
-            first_name="Alice",
-            last_name="Smith",
-        )
-        await auth_client.add_user(user)
         with does_not_raise():
             await auth_client.verify_token(name="alice", token="test-token")
+
+    async def test_get_user_token(self, auth_client: AuthClient) -> None:
+        user_token = await auth_client.get_user_token(name="alice", job_id="test-job")
+        assert user_token == "mock_token"
 
     async def test_check_user_permissions(self, auth_client: AuthClient) -> None:
         permissions = [
