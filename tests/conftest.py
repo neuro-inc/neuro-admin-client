@@ -1227,6 +1227,9 @@ class AdminServer:
     async def handle_verify_token(self, request: web.Request) -> web.Response:
         return web.json_response({"verified": True}, status=200)
 
+    async def handle_get_user_token(self, request: web.Request) -> web.Response:
+        return web.json_response({"access_token": "mock_token"}, status=200)
+
     async def handle_ping(self, request: web.Request) -> web.Response:
         return web.Response(text="Pong")
 
@@ -1297,6 +1300,10 @@ async def mock_admin_server() -> AsyncIterator[AdminServer]:
                 aiohttp.web.post(
                     "/api/v1/users/{name}/token/verify",
                     admin_server.handle_verify_token,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/users/{name}/token",
+                    admin_server.handle_get_user_token,
                 ),
                 aiohttp.web.get(
                     "/api/v1/orgs",

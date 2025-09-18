@@ -1125,11 +1125,27 @@ class AdminClientBase:
             assert txt == "Pong"
 
     async def verify_token(self, name: str, headers: CIMultiDict[str]) -> None:
-        path = f"users/{name}/token/verify"
+        path = f"{self._get_user_path(name)}/token/verify"
         async with self._request("POST", path, headers=headers) as resp:
             resp.raise_for_status()
             data = await resp.json()
             assert data["verified"], data
+
+    async def get_user_token(
+        self, name: str, payload: dict[str, Any], token: str | None = None
+    ) -> str:
+        headers = self.generate_auth_headers(token)
+        path = f"{self._get_user_path(name)}/token"
+        async with self._request("POST", path, headers=headers, json=payload) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+            access_token = data.get("access_token")
+            assert isinstance(access_token, str)
+            return access_token
+
+    def _get_user_path(self, name: str) -> str:
+        name = name.replace("/", ":")
+        return f"users/{name}"
 
     async def get_missing_permissions(
         self, name: str, payload: list[dict[str, Any]]
