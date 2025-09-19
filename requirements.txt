@@ -4,7 +4,7 @@ aiohttp~=3.12.15
 aiohttp>=3.8
 aiohttp-security>=0.4.0
 multidict~=6.6.4
-mypy==1.18.1
+mypy==1.18.2
 mypy-extensions==1.1.0
 pre-commit==4.3.0
 pytest==8.4.2
