@@ -1,5 +1,10 @@
 from . import entities
-from .admin_client import AdminClient, AdminClientDummy, GetUserResponse
+from .admin_client import (
+    AdminClient,
+    AdminClientBase,
+    AdminClientDummy,
+    GetUserResponse,
+)
 from .auth_client import AuthClient
 from .bearer_auth import BearerAuth
 from .entities import *  # noqa: F403
@@ -15,6 +20,7 @@ __all__ = [
     "check_permissions",
     "AdminClient",
     "AdminClientDummy",
+    "AdminClientBase",
     "GetUserResponse",
     "BearerAuth",
     "get_untrusted_user_name",
