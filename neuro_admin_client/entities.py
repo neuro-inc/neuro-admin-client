@@ -59,7 +59,7 @@ class UserInfo(FullNameMixin):
 @dataclass(frozen=True)
 class User(FullNameMixin):
     name: str
-    email: str = None
+    email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     created_at: Optional[datetime] = None
