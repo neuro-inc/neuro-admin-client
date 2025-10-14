@@ -3,7 +3,7 @@
 aiohttp~=3.13.0
 aiohttp>=3.8
 aiohttp-security>=0.4.0
-multidict~=6.6.4
+multidict~=6.7.0
 mypy==1.18.2
 mypy-extensions==1.1.0
 pre-commit==4.3.0
