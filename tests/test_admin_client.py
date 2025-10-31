@@ -2088,7 +2088,7 @@ class TestAdminClient:
         mock_admin_server.skus = [sku]
 
         async with AdminClient(base_url=mock_admin_server.url) as client:
-            await client.delete_cluster_sku("sku-1")
+            await client.delete_cluster_sku("test", "sku-1")
             assert len(mock_admin_server.skus) == 0
 
     async def test_get_price_catalogs(self, mock_admin_server: AdminServer) -> None:

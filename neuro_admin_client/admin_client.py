@@ -450,7 +450,7 @@ class AdminClientABC(abc.ABC):
     async def update_cluster_sku(self, sku_id: str, sku: ClusterSKU) -> ClusterSKU: ...
 
     @abstractmethod
-    async def delete_cluster_sku(self, sku_id: str) -> None: ...
+    async def delete_cluster_sku(self, cluster_name: str, sku_id: str) -> None: ...
 
     @abstractmethod
     async def get_price_catalogs(self, cluster_name: str) -> list[PriceCatalog]: ...
@@ -1951,8 +1951,10 @@ class AdminClientBase:
             raw_sku = await resp.json()
             return self._parse_sku(raw_sku)
 
-    async def delete_cluster_sku(self, sku_id: str) -> None:
-        async with self._request("DELETE", f"skus/{sku_id}") as resp:
+    async def delete_cluster_sku(self, cluster_name: str, sku_id: str) -> None:
+        async with self._request(
+            "DELETE", f"clusters/{cluster_name}/skus/{sku_id}"
+        ) as resp:
             resp.raise_for_status()
 
     async def get_price_catalogs(self, cluster_name: str) -> list[PriceCatalog]:
@@ -3431,7 +3433,7 @@ class AdminClientDummy(AdminClientABC):
     async def update_cluster_sku(self, sku_id: str, sku: ClusterSKU) -> ClusterSKU:
         return self.DUMMY_SKU
 
-    async def delete_cluster_sku(self, sku_id: str) -> None:
+    async def delete_cluster_sku(self, cluster_name: str, sku_id: str) -> None:
         pass
 
     async def get_price_catalogs(self, cluster_name: str) -> list[PriceCatalog]:

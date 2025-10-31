@@ -1356,6 +1356,7 @@ class AdminServer:
     async def handle_sku_delete(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
+        request.match_info["cname"]
         sku_id = request.match_info["sku_id"]
         for idx, sku in enumerate(self.skus):
             if sku.id == sku_id:
@@ -1897,7 +1898,7 @@ async def mock_admin_server() -> AsyncIterator[AdminServer]:
                     admin_server.handle_sku_put,
                 ),
                 aiohttp.web.delete(
-                    "/api/v1/skus/{sku_id}",
+                    "/api/v1/clusters/{cname}/skus/{sku_id}",
                     admin_server.handle_sku_delete,
                 ),
                 aiohttp.web.get(
