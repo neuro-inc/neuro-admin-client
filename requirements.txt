@@ -1,6 +1,6 @@
 -e .
 
-aiohttp~=3.13.1
+aiohttp~=3.13.2
 aiohttp>=3.8
 aiohttp-security>=0.4.0
 multidict~=6.7.0
