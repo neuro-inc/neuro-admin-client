@@ -18,17 +18,25 @@ from neuro_admin_client import (
     AuthClient,
     Balance,
     Cluster,
+    ClusterSKU,
     ClusterUser,
     ClusterUserRoleType,
+    Metric,
+    MetricUnit,
     Org,
     OrgCluster,
     OrgNotificationIntervals,
+    OrgPriceCatalog,
     OrgUser,
     OrgUserRoleType,
+    PriceCatalog,
+    PriceCatalogItem,
+    PriceCatalogStatus,
     Project,
     ProjectUser,
     ProjectUserRoleType,
     Quota,
+    ServiceType,
     User,
 )
 
@@ -65,6 +73,10 @@ class AdminServer:
     debts: list[Debt] = field(default_factory=list)
     projects: list[Project] = field(default_factory=list)
     project_users: list[ProjectUser] = field(default_factory=list)
+    skus: list[ClusterSKU] = field(default_factory=list)
+    price_catalogs: list[PriceCatalog] = field(default_factory=list)
+    price_catalog_items: list[PriceCatalogItem] = field(default_factory=list)
+    org_price_catalogs: list[OrgPriceCatalog] = field(default_factory=list)
 
     last_skip_auto_add_to_clusters: bool = False
 
@@ -1146,6 +1158,59 @@ class AdminServer:
             res["user_info"].pop("name")
         return res
 
+    def _serialize_sku(self, sku: ClusterSKU) -> dict[str, Any]:
+        return {
+            "id": sku.id,
+            "cluster_name": sku.cluster_name,
+            "service": str(sku.service),
+            "tier": sku.tier,
+            "metric": {"name": sku.metric.name, "unit": str(sku.metric.unit)},
+            "name": sku.name,
+            "internal_metric": {
+                "name": sku.internal_metric.name,
+                "unit": str(sku.internal_metric.unit),
+            },
+            "description": sku.description,
+        }
+
+    def _serialize_price_catalog(self, catalog: PriceCatalog) -> dict[str, Any]:
+        return {
+            "id": catalog.id,
+            "cluster_name": catalog.cluster_name,
+            "name": catalog.name,
+            "version": catalog.version,
+            "status": str(catalog.status),
+            "is_default": catalog.is_default,
+            "parent_catalog_id": catalog.parent_catalog_id,
+            "created_at": (
+                catalog.created_at.isoformat() if catalog.created_at else None
+            ),
+            "updated_at": (
+                catalog.updated_at.isoformat() if catalog.updated_at else None
+            ),
+        }
+
+    def _serialize_price_catalog_item(self, item: PriceCatalogItem) -> dict[str, Any]:
+        return {
+            "id": item.id,
+            "price_catalog_id": item.price_catalog_id,
+            "sku_id": item.sku_id,
+            "price": str(item.price),
+        }
+
+    def _serialize_org_price_catalog(
+        self, assignment: OrgPriceCatalog
+    ) -> dict[str, Any]:
+        return {
+            "id": assignment.id,
+            "org_name": assignment.org_name,
+            "price_catalog_id": assignment.price_catalog_id,
+            "start_time": assignment.start_time.isoformat(),
+            "end_time": (
+                assignment.end_time.isoformat() if assignment.end_time else None
+            ),
+        }
+
     async def handle_project_user_post(
         self, request: aiohttp.web.Request
     ) -> aiohttp.web.Response:
@@ -1229,6 +1294,272 @@ class AdminServer:
 
     async def handle_get_user_token(self, request: web.Request) -> web.Response:
         return web.json_response({"access_token": "mock_token"}, status=200)
+
+    async def handle_sku_list(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        skus = [sku for sku in self.skus if sku.cluster_name == cluster_name]
+        return aiohttp.web.json_response([self._serialize_sku(sku) for sku in skus])
+
+    async def handle_sku_post(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        payload = await request.json()
+        new_sku = ClusterSKU(
+            id=f"sku-{len(self.skus)}",
+            cluster_name=cluster_name,
+            service=ServiceType(payload["service"]),
+            tier=payload["tier"],
+            metric=Metric(
+                name=payload["metric"]["name"],
+                unit=MetricUnit(payload["metric"]["unit"]),
+            ),
+            name=payload["name"],
+            internal_metric=Metric(
+                name=payload["internal_metric"]["name"],
+                unit=MetricUnit(payload["internal_metric"]["unit"]),
+            ),
+            description=payload.get("description"),
+        )
+        self.skus.append(new_sku)
+        return aiohttp.web.json_response(self._serialize_sku(new_sku), status=201)
+
+    async def handle_sku_put(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        request.match_info["cname"]
+        sku_id = request.match_info["sku_id"]
+        payload = await request.json()
+        for idx, sku in enumerate(self.skus):
+            if sku.id == sku_id:
+                updated_sku = replace(
+                    sku,
+                    service=ServiceType(payload["service"]),
+                    tier=payload["tier"],
+                    metric=Metric(
+                        name=payload["metric"]["name"],
+                        unit=MetricUnit(payload["metric"]["unit"]),
+                    ),
+                    name=payload["name"],
+                    internal_metric=Metric(
+                        name=payload["internal_metric"]["name"],
+                        unit=MetricUnit(payload["internal_metric"]["unit"]),
+                    ),
+                    description=payload.get("description"),
+                )
+                self.skus[idx] = updated_sku
+                return aiohttp.web.json_response(self._serialize_sku(updated_sku))
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_sku_delete(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        sku_id = request.match_info["sku_id"]
+        for idx, sku in enumerate(self.skus):
+            if sku.id == sku_id:
+                del self.skus[idx]
+                return aiohttp.web.Response(status=204)
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_price_catalog_list(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        catalogs = [
+            cat for cat in self.price_catalogs if cat.cluster_name == cluster_name
+        ]
+        return aiohttp.web.json_response(
+            [self._serialize_price_catalog(cat) for cat in catalogs]
+        )
+
+    async def handle_price_catalog_post(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        cluster_name = request.match_info["cname"]
+        payload = await request.json()
+        new_catalog = PriceCatalog(
+            id=f"catalog-{len(self.price_catalogs)}",
+            cluster_name=cluster_name,
+            name=payload["name"],
+            version=1,
+            status=PriceCatalogStatus.DRAFT,
+            is_default=payload.get("is_default", False),
+        )
+        self.price_catalogs.append(new_catalog)
+        return aiohttp.web.json_response(
+            self._serialize_price_catalog(new_catalog), status=201
+        )
+
+    async def handle_price_catalog_get(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        catalog_id = request.match_info["catalog_id"]
+        include_items = request.query.get("include_items") == "true"
+
+        for catalog in self.price_catalogs:
+            if catalog.id == catalog_id:
+                result = self._serialize_price_catalog(catalog)
+                if include_items:
+                    items = [
+                        item
+                        for item in self.price_catalog_items
+                        if item.price_catalog_id == catalog_id
+                    ]
+                    result["items"] = [
+                        self._serialize_price_catalog_item(item) for item in items
+                    ]
+                return aiohttp.web.json_response(result)
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_price_catalog_patch(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        catalog_id = request.match_info["catalog_id"]
+        payload = await request.json()
+
+        for idx, catalog in enumerate(self.price_catalogs):
+            if catalog.id == catalog_id:
+                updates = {}
+                if "name" in payload:
+                    updates["name"] = payload["name"]
+                if "is_default" in payload:
+                    updates["is_default"] = payload["is_default"]
+
+                if "items" in payload:
+                    self.price_catalog_items = [
+                        item
+                        for item in self.price_catalog_items
+                        if item.price_catalog_id != catalog_id
+                    ]
+                    for item_data in payload["items"]:
+                        new_item = PriceCatalogItem(
+                            id=f"item-{len(self.price_catalog_items)}",
+                            price_catalog_id=catalog_id,
+                            sku_id=item_data["sku_id"],
+                            price=Decimal(item_data["price"]),
+                        )
+                        self.price_catalog_items.append(new_item)
+
+                updated_catalog = replace(catalog, **updates)
+                self.price_catalogs[idx] = updated_catalog
+                return aiohttp.web.json_response(
+                    self._serialize_price_catalog(updated_catalog)
+                )
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_price_catalog_delete(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        catalog_id = request.match_info["catalog_id"]
+        for idx, catalog in enumerate(self.price_catalogs):
+            if catalog.id == catalog_id:
+                del self.price_catalogs[idx]
+                self.price_catalog_items = [
+                    item
+                    for item in self.price_catalog_items
+                    if item.price_catalog_id != catalog_id
+                ]
+                return aiohttp.web.Response(status=204)
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_price_catalog_duplicate(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        catalog_id = request.match_info["catalog_id"]
+        payload = await request.json()
+
+        for catalog in self.price_catalogs:
+            if catalog.id == catalog_id:
+                new_catalog = replace(
+                    catalog,
+                    id=f"catalog-{len(self.price_catalogs)}",
+                    name=payload.get("name", catalog.name),
+                    parent_catalog_id=catalog_id,
+                    status=PriceCatalogStatus.DRAFT,
+                    is_default=False,
+                )
+                self.price_catalogs.append(new_catalog)
+
+                items = [
+                    item
+                    for item in self.price_catalog_items
+                    if item.price_catalog_id == catalog_id
+                ]
+                for item in items:
+                    new_item = replace(
+                        item,
+                        id=f"item-{len(self.price_catalog_items)}",
+                        price_catalog_id=new_catalog.id,
+                    )
+                    self.price_catalog_items.append(new_item)
+
+                return aiohttp.web.json_response(
+                    self._serialize_price_catalog(new_catalog), status=201
+                )
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_price_catalog_confirm(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        catalog_id = request.match_info["catalog_id"]
+        for idx, catalog in enumerate(self.price_catalogs):
+            if catalog.id == catalog_id:
+                updated_catalog = replace(catalog, status=PriceCatalogStatus.CONFIRMED)
+                self.price_catalogs[idx] = updated_catalog
+                return aiohttp.web.json_response(
+                    self._serialize_price_catalog(updated_catalog)
+                )
+        raise aiohttp.web.HTTPNotFound
+
+    async def handle_org_price_catalog_list(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        assignments = [a for a in self.org_price_catalogs if a.org_name == org_name]
+        return aiohttp.web.json_response(
+            [self._serialize_org_price_catalog(a) for a in assignments]
+        )
+
+    async def handle_org_price_catalog_effective(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        now = datetime.datetime.now(datetime.timezone.utc)
+
+        for assignment in self.org_price_catalogs:
+            if assignment.org_name == org_name:
+                if assignment.start_time <= now and (
+                    assignment.end_time is None or assignment.end_time >= now
+                ):
+                    for catalog in self.price_catalogs:
+                        if catalog.id == assignment.price_catalog_id:
+                            return aiohttp.web.json_response(
+                                self._serialize_price_catalog(catalog)
+                            )
+        return aiohttp.web.Response(status=204)
+
+    async def handle_org_price_catalog_post(
+        self, request: aiohttp.web.Request
+    ) -> aiohttp.web.Response:
+        org_name = request.match_info["oname"]
+        payload = await request.json()
+        new_assignment = OrgPriceCatalog(
+            id=f"org-catalog-{len(self.org_price_catalogs)}",
+            org_name=org_name,
+            price_catalog_id=payload["price_catalog_id"],
+            start_time=datetime.datetime.fromisoformat(payload["start_time"]),
+            end_time=(
+                datetime.datetime.fromisoformat(payload["end_time"])
+                if payload.get("end_time")
+                else None
+            ),
+        )
+        self.org_price_catalogs.append(new_assignment)
+        return aiohttp.web.json_response(
+            self._serialize_org_price_catalog(new_assignment), status=201
+        )
 
     async def handle_ping(self, request: web.Request) -> web.Response:
         return web.Response(text="Pong")
@@ -1552,6 +1883,62 @@ async def mock_admin_server() -> AsyncIterator[AdminServer]:
                 aiohttp.web.delete(
                     "/api/v1/clusters/{cname}/orgs/{oname}/projects/{pname}/users/{uname}",
                     admin_server.handle_project_user_delete,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/skus",
+                    admin_server.handle_sku_list,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/skus",
+                    admin_server.handle_sku_post,
+                ),
+                aiohttp.web.put(
+                    "/api/v1/clusters/{cname}/skus/{sku_id}",
+                    admin_server.handle_sku_put,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/skus/{sku_id}",
+                    admin_server.handle_sku_delete,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/clusters/{cname}/price_catalogs",
+                    admin_server.handle_price_catalog_list,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/clusters/{cname}/price_catalogs",
+                    admin_server.handle_price_catalog_post,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/price_catalogs/{catalog_id}",
+                    admin_server.handle_price_catalog_get,
+                ),
+                aiohttp.web.patch(
+                    "/api/v1/price_catalogs/{catalog_id}",
+                    admin_server.handle_price_catalog_patch,
+                ),
+                aiohttp.web.delete(
+                    "/api/v1/price_catalogs/{catalog_id}",
+                    admin_server.handle_price_catalog_delete,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/price_catalogs/{catalog_id}/duplicate",
+                    admin_server.handle_price_catalog_duplicate,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/price_catalogs/{catalog_id}/confirm",
+                    admin_server.handle_price_catalog_confirm,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/orgs/{oname}/price_catalogs",
+                    admin_server.handle_org_price_catalog_list,
+                ),
+                aiohttp.web.get(
+                    "/api/v1/orgs/{oname}/price_catalogs/effective",
+                    admin_server.handle_org_price_catalog_effective,
+                ),
+                aiohttp.web.post(
+                    "/api/v1/orgs/{oname}/price_catalogs",
+                    admin_server.handle_org_price_catalog_post,
                 ),
             )
         )

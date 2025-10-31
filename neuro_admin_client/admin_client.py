@@ -20,21 +20,29 @@ from neuro_admin_client.bearer_auth import BearerAuth
 from neuro_admin_client.entities import (
     Balance,
     Cluster,
+    ClusterSKU,
     ClusterUser,
     ClusterUserRoleType,
     ClusterUserWithInfo,
+    Metric,
+    MetricUnit,
     Org,
     OrgCluster,
     OrgNotificationIntervals,
+    OrgPriceCatalog,
     OrgUser,
     OrgUserRoleType,
     OrgUserWithInfo,
     Permission,
+    PriceCatalog,
+    PriceCatalogItem,
+    PriceCatalogStatus,
     Project,
     ProjectUser,
     ProjectUserRoleType,
     ProjectUserWithInfo,
     Quota,
+    ServiceType,
     User,
     UserInfo,
 )
@@ -431,6 +439,69 @@ class AdminClientABC(abc.ABC):
         *,
         idempotency_key: str | None = None,
     ) -> OrgCluster: ...
+
+    @abstractmethod
+    async def get_cluster_skus(self, cluster_name: str) -> list[ClusterSKU]: ...
+
+    @abstractmethod
+    async def create_cluster_sku(self, sku: ClusterSKU) -> ClusterSKU: ...
+
+    @abstractmethod
+    async def update_cluster_sku(self, sku_id: str, sku: ClusterSKU) -> ClusterSKU: ...
+
+    @abstractmethod
+    async def delete_cluster_sku(self, sku_id: str) -> None: ...
+
+    @abstractmethod
+    async def get_price_catalogs(self, cluster_name: str) -> list[PriceCatalog]: ...
+
+    @abstractmethod
+    async def create_price_catalog(self, catalog: PriceCatalog) -> PriceCatalog: ...
+
+    @abstractmethod
+    async def get_price_catalog(self, catalog_id: str) -> PriceCatalog: ...
+
+    @abstractmethod
+    async def update_price_catalog(
+        self, catalog_id: str, updates: dict[str, Any]
+    ) -> PriceCatalog: ...
+
+    @abstractmethod
+    async def delete_price_catalog(self, catalog_id: str) -> None: ...
+
+    @abstractmethod
+    async def duplicate_price_catalog(
+        self, catalog_id: str, new_name: str | None = None
+    ) -> PriceCatalog: ...
+
+    @abstractmethod
+    async def confirm_price_catalog(self, catalog_id: str) -> PriceCatalog: ...
+
+    @abstractmethod
+    async def get_price_catalog_items(
+        self, catalog_id: str
+    ) -> list[PriceCatalogItem]: ...
+
+    @abstractmethod
+    async def set_price_catalog_items(
+        self, catalog_id: str, items: list[PriceCatalogItem]
+    ) -> None: ...
+
+    @abstractmethod
+    async def set_default_price_catalog(self, catalog_id: str) -> None: ...
+
+    @abstractmethod
+    async def get_org_price_catalogs(self, org_name: str) -> list[OrgPriceCatalog]: ...
+
+    @abstractmethod
+    async def get_effective_price_catalog(
+        self, org_name: str
+    ) -> PriceCatalog | None: ...
+
+    @abstractmethod
+    async def add_org_price_catalog(
+        self, assignment: OrgPriceCatalog
+    ) -> OrgPriceCatalog: ...
 
     @abstractmethod
     async def list_orgs(self) -> list[Org]: ...
@@ -1215,6 +1286,54 @@ class AdminClientBase:
             return None
         return OrgNotificationIntervals(**payload)
 
+    def _parse_metric(self, payload: dict[str, Any]) -> Metric:
+        return Metric(name=payload["name"], unit=MetricUnit(payload["unit"]))
+
+    def _parse_sku(self, payload: dict[str, Any]) -> ClusterSKU:
+        return ClusterSKU(
+            id=payload.get("id"),
+            cluster_name=payload["cluster_name"],
+            service=ServiceType(payload["service"]),
+            tier=payload["tier"],
+            metric=self._parse_metric(payload["metric"]),
+            name=payload["name"],
+            internal_metric=self._parse_metric(payload["internal_metric"]),
+            description=payload.get("description"),
+        )
+
+    def _parse_price_catalog(self, payload: dict[str, Any]) -> PriceCatalog:
+        created_at = payload.get("created_at")
+        updated_at = payload.get("updated_at")
+        return PriceCatalog(
+            id=payload.get("id"),
+            cluster_name=payload["cluster_name"],
+            name=payload["name"],
+            version=payload["version"],
+            status=PriceCatalogStatus(payload["status"]),
+            is_default=payload.get("is_default", False),
+            parent_catalog_id=payload.get("parent_catalog_id"),
+            created_at=datetime.fromisoformat(created_at) if created_at else None,
+            updated_at=datetime.fromisoformat(updated_at) if updated_at else None,
+        )
+
+    def _parse_price_catalog_item(self, payload: dict[str, Any]) -> PriceCatalogItem:
+        return PriceCatalogItem(
+            id=payload.get("id"),
+            price_catalog_id=payload.get("price_catalog_id"),
+            sku_id=payload["sku_id"],
+            price=Decimal(payload["price"]),
+        )
+
+    def _parse_org_price_catalog(self, payload: dict[str, Any]) -> OrgPriceCatalog:
+        end_time = payload.get("end_time")
+        return OrgPriceCatalog(
+            id=payload.get("id"),
+            org_name=payload["org_name"],
+            price_catalog_id=payload["price_catalog_id"],
+            start_time=datetime.fromisoformat(payload["start_time"]),
+            end_time=datetime.fromisoformat(end_time) if end_time else None,
+        )
+
     @staticmethod
     def generate_auth_headers(token: str | None = None) -> CIMultiDict[str]:
         headers: CIMultiDict[str] = CIMultiDict()
@@ -1787,6 +1906,177 @@ class AdminClientBase:
             resp.raise_for_status()
             raw_org_cluster = await resp.json()
             return self._parse_org_cluster(cluster_name, raw_org_cluster)
+
+    async def get_cluster_skus(self, cluster_name: str) -> list[ClusterSKU]:
+        async with self._request("GET", f"clusters/{cluster_name}/skus") as resp:
+            resp.raise_for_status()
+            raw_list = await resp.json()
+            return [self._parse_sku(entry) for entry in raw_list]
+
+    async def create_cluster_sku(self, sku: ClusterSKU) -> ClusterSKU:
+        payload = {
+            "service": str(sku.service),
+            "tier": sku.tier,
+            "metric": {"name": sku.metric.name, "unit": str(sku.metric.unit)},
+            "name": sku.name,
+            "internal_metric": {
+                "name": sku.internal_metric.name,
+                "unit": str(sku.internal_metric.unit),
+            },
+            "description": sku.description,
+        }
+        async with self._request(
+            "POST", f"clusters/{sku.cluster_name}/skus", json=payload
+        ) as resp:
+            resp.raise_for_status()
+            raw_sku = await resp.json()
+            return self._parse_sku(raw_sku)
+
+    async def update_cluster_sku(self, sku_id: str, sku: ClusterSKU) -> ClusterSKU:
+        payload = {
+            "service": str(sku.service),
+            "tier": sku.tier,
+            "metric": {"name": sku.metric.name, "unit": str(sku.metric.unit)},
+            "name": sku.name,
+            "internal_metric": {
+                "name": sku.internal_metric.name,
+                "unit": str(sku.internal_metric.unit),
+            },
+            "description": sku.description,
+        }
+        async with self._request(
+            "PUT", f"clusters/{sku.cluster_name}/skus/{sku_id}", json=payload
+        ) as resp:
+            resp.raise_for_status()
+            raw_sku = await resp.json()
+            return self._parse_sku(raw_sku)
+
+    async def delete_cluster_sku(self, sku_id: str) -> None:
+        async with self._request("DELETE", f"skus/{sku_id}") as resp:
+            resp.raise_for_status()
+
+    async def get_price_catalogs(self, cluster_name: str) -> list[PriceCatalog]:
+        async with self._request(
+            "GET", f"clusters/{cluster_name}/price_catalogs"
+        ) as resp:
+            resp.raise_for_status()
+            raw_list = await resp.json()
+            return [self._parse_price_catalog(entry) for entry in raw_list]
+
+    async def create_price_catalog(self, catalog: PriceCatalog) -> PriceCatalog:
+        payload = {
+            "name": catalog.name,
+            "is_default": catalog.is_default,
+        }
+        async with self._request(
+            "POST", f"clusters/{catalog.cluster_name}/price_catalogs", json=payload
+        ) as resp:
+            resp.raise_for_status()
+            raw_catalog = await resp.json()
+            return self._parse_price_catalog(raw_catalog)
+
+    async def get_price_catalog(self, catalog_id: str) -> PriceCatalog:
+        async with self._request("GET", f"price_catalogs/{catalog_id}") as resp:
+            resp.raise_for_status()
+            raw_catalog = await resp.json()
+            return self._parse_price_catalog(raw_catalog)
+
+    async def update_price_catalog(
+        self, catalog_id: str, updates: dict[str, Any]
+    ) -> PriceCatalog:
+        async with self._request(
+            "PATCH", f"price_catalogs/{catalog_id}", json=updates
+        ) as resp:
+            resp.raise_for_status()
+            raw_catalog = await resp.json()
+            return self._parse_price_catalog(raw_catalog)
+
+    async def delete_price_catalog(self, catalog_id: str) -> None:
+        async with self._request("DELETE", f"price_catalogs/{catalog_id}") as resp:
+            resp.raise_for_status()
+
+    async def duplicate_price_catalog(
+        self, catalog_id: str, new_name: str | None = None
+    ) -> PriceCatalog:
+        payload = {}
+        if new_name:
+            payload["name"] = new_name
+        async with self._request(
+            "POST", f"price_catalogs/{catalog_id}/duplicate", json=payload
+        ) as resp:
+            resp.raise_for_status()
+            raw_catalog = await resp.json()
+            return self._parse_price_catalog(raw_catalog)
+
+    async def confirm_price_catalog(self, catalog_id: str) -> PriceCatalog:
+        async with self._request(
+            "POST", f"price_catalogs/{catalog_id}/confirm", json={}
+        ) as resp:
+            resp.raise_for_status()
+            raw_catalog = await resp.json()
+            return self._parse_price_catalog(raw_catalog)
+
+    async def get_price_catalog_items(self, catalog_id: str) -> list[PriceCatalogItem]:
+        async with self._request(
+            "GET", f"price_catalogs/{catalog_id}", params={"include_items": "true"}
+        ) as resp:
+            resp.raise_for_status()
+            raw_catalog = await resp.json()
+            items = raw_catalog.get("items", [])
+            return [self._parse_price_catalog_item(entry) for entry in items]
+
+    async def set_price_catalog_items(
+        self, catalog_id: str, items: list[PriceCatalogItem]
+    ) -> None:
+        payload = {
+            "items": [
+                {"sku_id": item.sku_id, "price": str(item.price)} for item in items
+            ]
+        }
+        async with self._request(
+            "PATCH", f"price_catalogs/{catalog_id}", json=payload
+        ) as resp:
+            resp.raise_for_status()
+
+    async def set_default_price_catalog(self, catalog_id: str) -> None:
+        payload = {"is_default": True}
+        async with self._request(
+            "PATCH", f"price_catalogs/{catalog_id}", json=payload
+        ) as resp:
+            resp.raise_for_status()
+
+    async def get_org_price_catalogs(self, org_name: str) -> list[OrgPriceCatalog]:
+        async with self._request("GET", f"orgs/{org_name}/price_catalogs") as resp:
+            resp.raise_for_status()
+            raw_list = await resp.json()
+            return [self._parse_org_price_catalog(entry) for entry in raw_list]
+
+    async def get_effective_price_catalog(self, org_name: str) -> PriceCatalog | None:
+        async with self._request(
+            "GET", f"orgs/{org_name}/price_catalogs/effective"
+        ) as resp:
+            if resp.status == 204:
+                return None
+            resp.raise_for_status()
+            raw_catalog = await resp.json()
+            return self._parse_price_catalog(raw_catalog)
+
+    async def add_org_price_catalog(
+        self, assignment: OrgPriceCatalog
+    ) -> OrgPriceCatalog:
+        payload = {
+            "org_name": assignment.org_name,
+            "price_catalog_id": assignment.price_catalog_id,
+            "start_time": assignment.start_time.isoformat(),
+        }
+        if assignment.end_time:
+            payload["end_time"] = assignment.end_time.isoformat()
+        async with self._request(
+            "POST", f"orgs/{assignment.org_name}/price_catalogs", json=payload
+        ) as resp:
+            resp.raise_for_status()
+            raw_assignment = await resp.json()
+            return self._parse_org_price_catalog(raw_assignment)
 
     def _parse_org_payload(self, payload: dict[str, Any]) -> Org:
         return Org(
@@ -2696,6 +2986,44 @@ class AdminClientDummy(AdminClientABC):
         user_info=UserInfo(email="email@examle.com"),
     )
 
+    DUMMY_SKU = ClusterSKU(
+        id="sku-id",
+        cluster_name="cluster",
+        service=ServiceType.COMPUTE,
+        tier="default",
+        metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+        name="compute.default.cluster.cpu_hours",
+        internal_metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+        description="CPU hours",
+    )
+
+    DUMMY_PRICE_CATALOG = PriceCatalog(
+        id="catalog-id",
+        cluster_name="cluster",
+        name="Default Pricing",
+        version=1,
+        status=PriceCatalogStatus.CONFIRMED,
+        is_default=True,
+        parent_catalog_id=None,
+        created_at=datetime(2025, 1, 1),
+        updated_at=datetime(2025, 1, 1),
+    )
+
+    DUMMY_PRICE_CATALOG_ITEM = PriceCatalogItem(
+        id="item-id",
+        price_catalog_id="catalog-id",
+        sku_id="sku-id",
+        price=Decimal("1.50"),
+    )
+
+    DUMMY_ORG_PRICE_CATALOG = OrgPriceCatalog(
+        id="org-catalog-id",
+        org_name="org",
+        price_catalog_id="catalog-id",
+        start_time=datetime(2025, 1, 1),
+        end_time=None,
+    )
+
     async def __aenter__(self) -> AdminClientDummy:
         return self
 
@@ -3093,6 +3421,65 @@ class AdminClientDummy(AdminClientABC):
         idempotency_key: str | None = None,
     ) -> OrgCluster:
         return self.DUMMY_ORG_CLUSTER
+
+    async def get_cluster_skus(self, cluster_name: str) -> list[ClusterSKU]:
+        return [self.DUMMY_SKU]
+
+    async def create_cluster_sku(self, sku: ClusterSKU) -> ClusterSKU:
+        return self.DUMMY_SKU
+
+    async def update_cluster_sku(self, sku_id: str, sku: ClusterSKU) -> ClusterSKU:
+        return self.DUMMY_SKU
+
+    async def delete_cluster_sku(self, sku_id: str) -> None:
+        pass
+
+    async def get_price_catalogs(self, cluster_name: str) -> list[PriceCatalog]:
+        return [self.DUMMY_PRICE_CATALOG]
+
+    async def create_price_catalog(self, catalog: PriceCatalog) -> PriceCatalog:
+        return self.DUMMY_PRICE_CATALOG
+
+    async def get_price_catalog(self, catalog_id: str) -> PriceCatalog:
+        return self.DUMMY_PRICE_CATALOG
+
+    async def update_price_catalog(
+        self, catalog_id: str, updates: dict[str, Any]
+    ) -> PriceCatalog:
+        return self.DUMMY_PRICE_CATALOG
+
+    async def delete_price_catalog(self, catalog_id: str) -> None:
+        pass
+
+    async def duplicate_price_catalog(
+        self, catalog_id: str, new_name: str | None = None
+    ) -> PriceCatalog:
+        return self.DUMMY_PRICE_CATALOG
+
+    async def confirm_price_catalog(self, catalog_id: str) -> PriceCatalog:
+        return self.DUMMY_PRICE_CATALOG
+
+    async def get_price_catalog_items(self, catalog_id: str) -> list[PriceCatalogItem]:
+        return [self.DUMMY_PRICE_CATALOG_ITEM]
+
+    async def set_price_catalog_items(
+        self, catalog_id: str, items: list[PriceCatalogItem]
+    ) -> None:
+        pass
+
+    async def set_default_price_catalog(self, catalog_id: str) -> None:
+        pass
+
+    async def get_org_price_catalogs(self, org_name: str) -> list[OrgPriceCatalog]:
+        return [self.DUMMY_ORG_PRICE_CATALOG]
+
+    async def get_effective_price_catalog(self, org_name: str) -> PriceCatalog | None:
+        return self.DUMMY_PRICE_CATALOG
+
+    async def add_org_price_catalog(
+        self, assignment: OrgPriceCatalog
+    ) -> OrgPriceCatalog:
+        return self.DUMMY_ORG_PRICE_CATALOG
 
     async def list_orgs(self) -> list[Org]:
         return [self.DUMMY_ORG]

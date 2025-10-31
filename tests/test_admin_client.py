@@ -11,18 +11,26 @@ from neuro_admin_client import (
     AdminClient,
     Balance,
     Cluster,
+    ClusterSKU,
     ClusterUser,
     ClusterUserRoleType,
     GetUserResponse,
+    Metric,
+    MetricUnit,
     Org,
     OrgCluster,
     OrgNotificationIntervals,
+    OrgPriceCatalog,
     OrgUser,
     OrgUserRoleType,
+    PriceCatalog,
+    PriceCatalogItem,
+    PriceCatalogStatus,
     Project,
     ProjectUser,
     ProjectUserRoleType,
     Quota,
+    ServiceType,
     User,
 )
 
@@ -2010,3 +2018,297 @@ class TestAdminClient:
             )
             assert len(mock_admin_server.project_users) == 1
             assert mock_admin_server.project_users[0].user_name == "test2"
+
+    async def test_get_cluster_skus(self, mock_admin_server: AdminServer) -> None:
+        sku1 = ClusterSKU(
+            id="sku-1",
+            cluster_name="test",
+            service=ServiceType.COMPUTE,
+            tier="default",
+            metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+            name="compute.default.test.cpu_hours",
+            internal_metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+            description="CPU hours",
+        )
+        mock_admin_server.skus = [sku1]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            skus = await client.get_cluster_skus("test")
+            assert len(skus) == 1
+            assert skus[0].id == "sku-1"
+            assert skus[0].service == ServiceType.COMPUTE
+
+    async def test_create_cluster_sku(self, mock_admin_server: AdminServer) -> None:
+        sku = ClusterSKU(
+            cluster_name="test",
+            service=ServiceType.COMPUTE,
+            tier="default",
+            metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+            name="compute.default.test.cpu_hours",
+            internal_metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+            description="CPU hours",
+        )
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            created = await client.create_cluster_sku(sku)
+            assert created.cluster_name == "test"
+            assert created.service == ServiceType.COMPUTE
+            assert len(mock_admin_server.skus) == 1
+
+    async def test_update_cluster_sku(self, mock_admin_server: AdminServer) -> None:
+        sku = ClusterSKU(
+            id="sku-1",
+            cluster_name="test",
+            service=ServiceType.COMPUTE,
+            tier="default",
+            metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+            name="compute.default.test.cpu_hours",
+            internal_metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+            description="CPU hours",
+        )
+        mock_admin_server.skus = [sku]
+
+        updated_sku = replace(sku, description="Updated description")
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            result = await client.update_cluster_sku("sku-1", updated_sku)
+            assert result.description == "Updated description"
+            assert mock_admin_server.skus[0].description == "Updated description"
+
+    async def test_delete_cluster_sku(self, mock_admin_server: AdminServer) -> None:
+        sku = ClusterSKU(
+            id="sku-1",
+            cluster_name="test",
+            service=ServiceType.COMPUTE,
+            tier="default",
+            metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+            name="compute.default.test.cpu_hours",
+            internal_metric=Metric(name="cpu_hours", unit=MetricUnit.HOURS),
+        )
+        mock_admin_server.skus = [sku]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.delete_cluster_sku("sku-1")
+            assert len(mock_admin_server.skus) == 0
+
+    async def test_get_price_catalogs(self, mock_admin_server: AdminServer) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.CONFIRMED,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            catalogs = await client.get_price_catalogs("test")
+            assert len(catalogs) == 1
+            assert catalogs[0].name == "Q1 Pricing"
+
+    async def test_create_price_catalog(self, mock_admin_server: AdminServer) -> None:
+        catalog = PriceCatalog(
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.DRAFT,
+        )
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            created = await client.create_price_catalog(catalog)
+            assert created.name == "Q1 Pricing"
+            assert created.status == PriceCatalogStatus.DRAFT
+            assert len(mock_admin_server.price_catalogs) == 1
+
+    async def test_get_price_catalog(self, mock_admin_server: AdminServer) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.CONFIRMED,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            result = await client.get_price_catalog("catalog-1")
+            assert result.id == "catalog-1"
+            assert result.name == "Q1 Pricing"
+
+    async def test_update_price_catalog(self, mock_admin_server: AdminServer) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.DRAFT,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            result = await client.update_price_catalog(
+                "catalog-1", {"name": "Q1 Updated"}
+            )
+            assert result.name == "Q1 Updated"
+
+    async def test_delete_price_catalog(self, mock_admin_server: AdminServer) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.DRAFT,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.delete_price_catalog("catalog-1")
+            assert len(mock_admin_server.price_catalogs) == 0
+
+    async def test_duplicate_price_catalog(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.CONFIRMED,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            duplicated = await client.duplicate_price_catalog("catalog-1", "Q2 Pricing")
+            assert duplicated.name == "Q2 Pricing"
+            assert duplicated.parent_catalog_id == "catalog-1"
+            assert len(mock_admin_server.price_catalogs) == 2
+
+    async def test_confirm_price_catalog(self, mock_admin_server: AdminServer) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.DRAFT,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            result = await client.confirm_price_catalog("catalog-1")
+            assert result.status == PriceCatalogStatus.CONFIRMED
+            assert (
+                mock_admin_server.price_catalogs[0].status
+                == PriceCatalogStatus.CONFIRMED
+            )
+
+    async def test_get_price_catalog_items(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.CONFIRMED,
+        )
+        item = PriceCatalogItem(
+            id="item-1",
+            price_catalog_id="catalog-1",
+            sku_id="sku-1",
+            price=Decimal("1.50"),
+        )
+        mock_admin_server.price_catalogs = [catalog]
+        mock_admin_server.price_catalog_items = [item]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            items = await client.get_price_catalog_items("catalog-1")
+            assert len(items) == 1
+            assert items[0].price == Decimal("1.50")
+
+    async def test_set_price_catalog_items(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.DRAFT,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        items = [
+            PriceCatalogItem(sku_id="sku-1", price=Decimal("1.50")),
+            PriceCatalogItem(sku_id="sku-2", price=Decimal("2.00")),
+        ]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.set_price_catalog_items("catalog-1", items)
+            assert len(mock_admin_server.price_catalog_items) == 2
+
+    async def test_set_default_price_catalog(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.CONFIRMED,
+            is_default=False,
+        )
+        mock_admin_server.price_catalogs = [catalog]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            await client.set_default_price_catalog("catalog-1")
+            assert mock_admin_server.price_catalogs[0].is_default
+
+    async def test_get_org_price_catalogs(self, mock_admin_server: AdminServer) -> None:
+        assignment = OrgPriceCatalog(
+            id="org-catalog-1",
+            org_name="test-org",
+            price_catalog_id="catalog-1",
+            start_time=datetime.datetime(2025, 1, 1, tzinfo=datetime.timezone.utc),
+        )
+        mock_admin_server.org_price_catalogs = [assignment]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            assignments = await client.get_org_price_catalogs("test-org")
+            assert len(assignments) == 1
+            assert assignments[0].org_name == "test-org"
+
+    async def test_get_effective_price_catalog(
+        self, mock_admin_server: AdminServer
+    ) -> None:
+        catalog = PriceCatalog(
+            id="catalog-1",
+            cluster_name="test",
+            name="Q1 Pricing",
+            version=1,
+            status=PriceCatalogStatus.CONFIRMED,
+        )
+        assignment = OrgPriceCatalog(
+            id="org-catalog-1",
+            org_name="test-org",
+            price_catalog_id="catalog-1",
+            start_time=datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc),
+        )
+        mock_admin_server.price_catalogs = [catalog]
+        mock_admin_server.org_price_catalogs = [assignment]
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            result = await client.get_effective_price_catalog("test-org")
+            assert result is not None
+            assert result.id == "catalog-1"
+
+    async def test_add_org_price_catalog(self, mock_admin_server: AdminServer) -> None:
+        assignment = OrgPriceCatalog(
+            org_name="test-org",
+            price_catalog_id="catalog-1",
+            start_time=datetime.datetime(2025, 1, 1, tzinfo=datetime.timezone.utc),
+        )
+
+        async with AdminClient(base_url=mock_admin_server.url) as client:
+            result = await client.add_org_price_catalog(assignment)
+            assert result.org_name == "test-org"
+            assert len(mock_admin_server.org_price_catalogs) == 1

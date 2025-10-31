@@ -30,6 +30,14 @@ __all__ = [
     "OrderedEnum",
     "Action",
     "Permission",
+    "MetricUnit",
+    "ServiceType",
+    "Metric",
+    "ClusterSKU",
+    "PriceCatalogStatus",
+    "PriceCatalog",
+    "PriceCatalogItem",
+    "OrgPriceCatalog",
 ]
 
 
@@ -78,6 +86,100 @@ class Balance:
 @dataclass(frozen=True)
 class Quota:
     total_running_jobs: Optional[int] = None
+
+
+@unique
+class MetricUnit(str, Enum):
+    HOURS = "hours"
+    GB = "gb"
+    GIB = "gib"
+    TOKENS = "tokens"
+    COUNT = "count"
+    GB_HOURS = "gb_hours"
+    GIB_HOURS = "gib_hours"
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.__str__().__repr__()
+
+
+@unique
+class ServiceType(str, Enum):
+    COMPUTE = "compute"
+    OBJECT = "object"
+    BLOCK = "block"
+    FILE = "file"
+    K8S = "k8s"
+    NET = "net"
+    AI = "ai"
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.__str__().__repr__()
+
+
+@dataclass(frozen=True)
+class Metric:
+    name: str
+    unit: MetricUnit
+
+
+@dataclass(frozen=True)
+class ClusterSKU:
+    cluster_name: str
+    service: ServiceType
+    tier: str
+    metric: Metric
+    name: str
+    internal_metric: Metric
+    description: Optional[str] = None
+    id: Optional[str] = None
+
+
+@unique
+class PriceCatalogStatus(str, Enum):
+    DRAFT = "draft"
+    CONFIRMED = "confirmed"
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.__str__().__repr__()
+
+
+@dataclass(frozen=True)
+class PriceCatalog:
+    cluster_name: str
+    name: str
+    version: int
+    status: PriceCatalogStatus
+    is_default: bool = False
+    parent_catalog_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    id: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class PriceCatalogItem:
+    sku_id: str
+    price: Decimal
+    id: Optional[str] = None
+    price_catalog_id: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class OrgPriceCatalog:
+    org_name: str
+    price_catalog_id: str
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    id: Optional[str] = None
 
 
 @unique
