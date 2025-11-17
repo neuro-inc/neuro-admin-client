@@ -7,14 +7,14 @@ FLAKE8_TARGETS:= $(ISORT_TARGETS)
 
 
 setup:
-	uv sync
-	pre-commit install
+	uv sync --dev
+	uv run pre-commit install
 
-format:
+format: setup
 ifdef CI_LINT_RUN
-	pre-commit run --all-files --show-diff-on-failure
+	uv run pre-commit run --all-files --show-diff-on-failure
 else
-	pre-commit run --all-files
+	uv run pre-commit run --all-files
 endif
 
 
