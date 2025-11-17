@@ -7,8 +7,7 @@ FLAKE8_TARGETS:= $(ISORT_TARGETS)
 
 
 setup:
-	pip install -U pip
-	pip install -r requirements.txt
+	uv sync
 	pre-commit install
 
 format:
@@ -20,7 +19,7 @@ endif
 
 
 lint: format
-	mypy $(MYPY_TARGETS)
+	uv run mypy $(MYPY_TARGETS)
 
 test:
-	pytest --cov=neuro_admin_client --cov-report xml:.coverage.xml tests
+	uv run pytest --cov=neuro_admin_client --cov-report xml:.coverage.xml tests

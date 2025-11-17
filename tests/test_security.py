@@ -55,7 +55,7 @@ async def test_identity_ws_multiple_subprotocols() -> None:
 
 
 @pytest.mark.parametrize(
-    "path,headers,token",
+    ("path", "headers", "token"),
     [
         (  # all
             "/path?neuro-auth-token=token1",

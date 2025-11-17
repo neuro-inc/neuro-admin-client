@@ -2,40 +2,41 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, unique
-from typing import Any, List, Optional, Union, cast
+from typing import Any, cast
 
 from typing_extensions import Self
 from yarl import URL
 
+
 __all__ = [
-    "FullNameMixin",
-    "UserInfo",
-    "User",
+    "Action",
     "Balance",
-    "Quota",
-    "ClusterUserRoleType",
     "Cluster",
-    "OrgNotificationIntervals",
-    "Org",
-    "OrgUserRoleType",
-    "OrgUser",
-    "OrgUserWithInfo",
-    "OrgCluster",
     "ClusterUser",
+    "ClusterUserRoleType",
     "ClusterUserWithInfo",
-    "ProjectUserRoleType",
+    "FullNameMixin",
+    "OrderedEnum",
+    "Org",
+    "OrgCluster",
+    "OrgNotificationIntervals",
+    "OrgUser",
+    "OrgUserRoleType",
+    "OrgUserWithInfo",
+    "Permission",
     "Project",
     "ProjectUser",
+    "ProjectUserRoleType",
     "ProjectUserWithInfo",
-    "OrderedEnum",
-    "Action",
-    "Permission",
+    "Quota",
+    "User",
+    "UserInfo",
 ]
 
 
 class FullNameMixin:
-    first_name: Optional[str]
-    last_name: Optional[str]
+    first_name: str | None
+    last_name: str | None
 
     @property
     def full_name(self) -> str:
@@ -51,23 +52,23 @@ class FullNameMixin:
 @dataclass(frozen=True)
 class UserInfo(FullNameMixin):
     email: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    created_at: Optional[datetime] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass(frozen=True)
 class User(FullNameMixin):
     name: str
     email: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    created_at: Optional[datetime] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass(frozen=True)
 class Balance:
-    credits: Optional[Decimal] = None
+    credits: Decimal | None = None
     spent_credits: Decimal = Decimal(0)
 
     @property
@@ -77,7 +78,7 @@ class Balance:
 
 @dataclass(frozen=True)
 class Quota:
-    total_running_jobs: Optional[int] = None
+    total_running_jobs: int | None = None
 
 
 @unique
@@ -97,7 +98,7 @@ class ClusterUserRoleType(str, Enum):
 @dataclass(frozen=True)
 class Cluster:
     name: str
-    default_credits: Optional[Decimal]
+    default_credits: Decimal | None
     default_quota: Quota
     default_role: ClusterUserRoleType
     maintenance: bool = False
@@ -105,17 +106,17 @@ class Cluster:
 
 @dataclass(frozen=True)
 class OrgNotificationIntervals:
-    balance_projection_seconds: Optional[List[int]]
+    balance_projection_seconds: list[int] | None
     """How many seconds left till the balance reaches zero?
     A list of integers, where each number represents a seconds-based interval,
     at which the organization management team will receive a notification,
     if the projected usage will lead to a reaching of a zero-balance in that
     amount of seconds.
     """
-    balance_amount: Optional[List[int]]
+    balance_amount: list[int] | None
     """What exact balance amounts should trigger a notification?
     """
-    balance_depletion_seconds: Optional[List[int]]
+    balance_depletion_seconds: list[int] | None
     """If a balance is negative, when we should send a notification?
     e.g. 86_400 means 1 day after org reaches a zero balance.
     """
@@ -125,8 +126,8 @@ class OrgNotificationIntervals:
 class Org:
     name: str
     balance: Balance = Balance()
-    user_default_credits: Optional[Decimal] = None
-    notification_intervals: Optional[OrgNotificationIntervals] = None
+    user_default_credits: Decimal | None = None
+    notification_intervals: OrgNotificationIntervals | None = None
 
 
 @unique
@@ -170,10 +171,10 @@ class OrgCluster:
     cluster_name: str
     balance: Balance
     quota: Quota
-    default_credits: Optional[Decimal] = None
+    default_credits: Decimal | None = None
     default_quota: Quota = Quota()
     default_role: ClusterUserRoleType = ClusterUserRoleType.USER
-    storage_size: Optional[int] = None
+    storage_size: int | None = None
     maintenance: bool = False
 
 
@@ -181,10 +182,10 @@ class OrgCluster:
 class ClusterUser:
     cluster_name: str
     user_name: str
-    role: Optional[ClusterUserRoleType]
+    role: ClusterUserRoleType | None
     quota: Quota
     balance: Balance
-    org_name: Optional[str]
+    org_name: str | None
 
     def add_info(self, user_info: UserInfo) -> "ClusterUserWithInfo":
         return ClusterUserWithInfo(
@@ -221,7 +222,7 @@ class ProjectUserRoleType(str, Enum):
 class Project:
     name: str
     cluster_name: str
-    org_name: Optional[str]
+    org_name: str | None
     is_default: bool = False  # Enables auto add new tenant users to thi project
     default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER
 
@@ -230,7 +231,7 @@ class Project:
 class ProjectUser:
     user_name: str
     cluster_name: str
-    org_name: Optional[str]
+    org_name: str | None
     project_name: str
     role: ProjectUserRoleType
 
@@ -300,7 +301,7 @@ class Action(OrderedEnum):
         return self.__str__().__repr__()
 
 
-def check_action_allowed(actual: Action, requested: Union[Action, str]) -> bool:
+def check_action_allowed(actual: Action, requested: Action | str) -> bool:
     if isinstance(requested, str):
         requested = Action(requested)
     return actual >= requested
@@ -311,7 +312,7 @@ class Permission:
     uri: URL
     action: Action
 
-    def __init__(self, uri: Any, action: Union[Action, str]):
+    def __init__(self, uri: Any, action: Action | str):
         object.__setattr__(self, "uri", uri if isinstance(uri, URL) else URL(uri))
         if isinstance(action, str):
             action = Action(action)
@@ -320,7 +321,7 @@ class Permission:
     def with_manage_action(self) -> "Permission":
         return replace(self, action=Action.MANAGE)
 
-    def check_action_allowed(self, requested: Union[Action, str]) -> bool:
+    def check_action_allowed(self, requested: Action | str) -> bool:
         return check_action_allowed(self.action, requested)
 
     def can_list(self) -> bool:

@@ -60,12 +60,11 @@ class TestClient:
             assert client._url is None
 
     async def test_empty_url(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="url argument should be http URL or None"):
             AuthClient(URL(), "<token>")
 
 
 class TestAuthClient:
-
     async def test_add_user(self, auth_client: AuthClient) -> None:
         user = User(name="alice", email="alice@example.com")
         added = await auth_client.add_user(user)

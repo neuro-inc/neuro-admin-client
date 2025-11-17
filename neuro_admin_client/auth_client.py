@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 import aiohttp
 from aiohttp.hdrs import AUTHORIZATION
 from multidict import CIMultiDict
+from typing_extensions import Self
 from yarl import URL
 
 from neuro_admin_client.bearer_auth import BearerAuth
@@ -16,6 +17,7 @@ from neuro_admin_client.entities import (
 )
 
 from .admin_client import AdminClient
+
 
 T = TypeVar("T")
 
@@ -28,9 +30,10 @@ class AuthClient:
         trace_configs: list[aiohttp.TraceConfig] | None = None,
     ) -> None:
         if url is not None and not url:
-            raise ValueError(
+            msg = (
                 "url argument should be http URL or None for secure-less configurations"
             )
+            raise ValueError(msg)
         self._token = token
         self._admin_client = AdminClient(
             base_url=url,
@@ -45,11 +48,11 @@ class AuthClient:
     async def close(self) -> None:
         await self._admin_client.close()
 
-    async def __aenter__(self) -> AuthClient:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         await self.close()
 
     def _make_url(self, path: str) -> URL:
@@ -65,7 +68,7 @@ class AuthClient:
     async def check_user_permissions(
         self,
         name: str,
-        permissions: Sequence[Union[Permission, Sequence[Permission]]],
+        permissions: Sequence[Permission | Sequence[Permission]],
     ) -> bool:
         if self._url is None:
             return True
@@ -75,7 +78,7 @@ class AuthClient:
     async def get_missing_permissions(
         self,
         name: str,
-        permissions: Sequence[Union[Permission, Sequence[Permission]]],
+        permissions: Sequence[Permission | Sequence[Permission]],
     ) -> Sequence[Permission]:
         assert permissions, "No permissions passed"
         if self._url is None:
@@ -145,8 +148,8 @@ class AuthClient:
         user_name: str,
         entities: Iterable[T],
         per_entity_perms: Callable[[T], Sequence[Permission]],
-        global_perm: Optional[Permission] = None,
-    ) -> List[T]:
+        global_perm: Permission | None = None,
+    ) -> list[T]:
         entities = list(entities)
         all_perms: list[Permission] = []
         if global_perm is not None:
