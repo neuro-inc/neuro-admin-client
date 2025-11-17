@@ -8,12 +8,13 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, List, Tuple, Union, overload
+from types import TracebackType
+from typing import Any, Literal, overload
 
 import aiohttp
 from aiohttp.hdrs import AUTHORIZATION
 from multidict import CIMultiDict
-from typing_extensions import Literal
+from typing_extensions import Self
 from yarl import URL, Query
 
 from neuro_admin_client.bearer_auth import BearerAuth
@@ -40,6 +41,10 @@ from neuro_admin_client.entities import (
 )
 
 
+_EMPTY_QUOTA = Quota()
+_EMPTY_BALANCE = Balance()
+
+
 def _to_query_bool(flag: bool) -> str:
     return str(flag).lower()
 
@@ -52,22 +57,30 @@ class GetUserResponse:
     projects: list[ProjectUser] = field(default_factory=list)
 
 
-GetUserRet = Union[
-    User,
-    Tuple[User, List[ClusterUser]],
-    Tuple[User, List[ProjectUser]],
-    Tuple[User, List[ClusterUser], List[ProjectUser]],
-    GetUserResponse,
-]
+GetUserRet = (
+    User
+    | tuple[User, list[ClusterUser]]
+    | tuple[User, list[ProjectUser]]
+    | tuple[User, list[ClusterUser], list[ProjectUser]]
+    | GetUserResponse
+)
 
 
 class AdminClientABC(abc.ABC):
-    async def __aenter__(self) -> AdminClientABC:
-        return self
-
-    async def __aexit__(self, *args: Any) -> None:
+    @abstractmethod
+    async def __aenter__(self) -> Self:
         pass
 
+    @abstractmethod
+    async def __aexit__(
+        self,
+        exc_typ: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        pass
+
+    @abstractmethod
     async def aclose(self) -> None:
         pass
 
@@ -144,7 +157,7 @@ class AdminClientABC(abc.ABC):
         name: str,
         headers: CIMultiDict[str] | None = None,
         default_credits: Decimal | None = None,
-        default_quota: Quota = Quota(),
+        default_quota: Quota = _EMPTY_QUOTA,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> Cluster: ...
 
@@ -354,9 +367,9 @@ class AdminClientABC(abc.ABC):
         self,
         cluster_name: str,
         org_name: str,
-        quota: Quota = Quota(),
-        balance: Balance = Balance(),
-        default_quota: Quota = Quota(),
+        quota: Quota = _EMPTY_QUOTA,
+        balance: Balance = _EMPTY_BALANCE,
+        default_quota: Quota = _EMPTY_QUOTA,
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         storage_size: int | None = None,
@@ -387,7 +400,7 @@ class AdminClientABC(abc.ABC):
         self,
         cluster_name: str,
         org_name: str,
-        default_quota: Quota = Quota(),
+        default_quota: Quota = _EMPTY_QUOTA,
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> OrgCluster: ...
@@ -915,8 +928,7 @@ class AdminClientBase:
         async with self._request("GET", "users") as resp:
             resp.raise_for_status()
             users_raw = await resp.json()
-            users = [self._parse_user_payload(raw_user) for raw_user in users_raw]
-        return users
+            return [self._parse_user_payload(raw_user) for raw_user in users_raw]
 
     @overload
     async def get_user(self, name: str) -> User: ...
@@ -1078,10 +1090,7 @@ class AdminClientBase:
         async with self._request("GET", "clusters") as resp:
             resp.raise_for_status()
             clusters_raw = await resp.json()
-            clusters = [
-                self._parse_cluster_payload(raw_user) for raw_user in clusters_raw
-            ]
-        return clusters
+            return [self._parse_cluster_payload(raw_user) for raw_user in clusters_raw]
 
     async def get_cluster(self, name: str) -> Cluster:
         async with self._request("GET", f"clusters/{name}") as resp:
@@ -1094,7 +1103,7 @@ class AdminClientBase:
         name: str,
         headers: CIMultiDict[str] | None = None,
         default_credits: Decimal | None = None,
-        default_quota: Quota = Quota(),
+        default_quota: Quota = _EMPTY_QUOTA,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         maintenance: bool = False,
     ) -> Cluster:
@@ -1195,13 +1204,13 @@ class AdminClientBase:
 
     def _parse_quota(self, payload: dict[str, Any] | None) -> Quota:
         if payload is None:
-            return Quota()
+            return _EMPTY_QUOTA
         return Quota(total_running_jobs=payload.get("total_running_jobs"))
 
     @staticmethod
     def _parse_balance(payload: dict[str, Any] | None) -> Balance:
         if payload is None:
-            return Balance()
+            return _EMPTY_BALANCE
         return Balance(
             spent_credits=Decimal(payload["spent_credits"]),
             credits=Decimal(payload["credits"]) if payload.get("credits") else None,
@@ -1270,11 +1279,10 @@ class AdminClientBase:
         ) as resp:
             resp.raise_for_status()
             clusters_raw = await resp.json()
-            clusters = [
+            return [
                 self._parse_cluster_user(cluster_name, raw_user)
                 for raw_user in clusters_raw
             ]
-        return clusters
 
     @overload
     async def get_cluster_user(
@@ -1401,9 +1409,9 @@ class AdminClientBase:
         if cluster_user.org_name:
             payload["org_name"] = cluster_user.org_name
         if cluster_user.quota.total_running_jobs is not None:
-            payload["quota"][
-                "total_running_jobs"
-            ] = cluster_user.quota.total_running_jobs
+            payload["quota"]["total_running_jobs"] = (
+                cluster_user.quota.total_running_jobs
+            )
         if cluster_user.org_name:
             url = (
                 f"clusters/{cluster_user.cluster_name}/orgs/"
@@ -1574,9 +1582,9 @@ class AdminClientBase:
         self,
         cluster_name: str,
         org_name: str,
-        quota: Quota = Quota(),
-        balance: Balance = Balance(),
-        default_quota: Quota = Quota(),
+        quota: Quota = _EMPTY_QUOTA,
+        balance: Balance = _EMPTY_BALANCE,
+        default_quota: Quota = _EMPTY_QUOTA,
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         storage_size: int | None = None,
@@ -1599,9 +1607,9 @@ class AdminClientBase:
         if default_credits:
             payload["default_credits"] = str(default_credits)
         if default_quota.total_running_jobs is not None:
-            payload["default_quota"][
-                "total_running_jobs"
-            ] = default_quota.total_running_jobs
+            payload["default_quota"]["total_running_jobs"] = (
+                default_quota.total_running_jobs
+            )
         if storage_size is not None:
             payload["storage_size"] = storage_size
         async with self._request(
@@ -1615,10 +1623,7 @@ class AdminClientBase:
         async with self._request("GET", f"clusters/{cluster_name}/orgs") as resp:
             resp.raise_for_status()
             raw_list = await resp.json()
-            clusters = [
-                self._parse_org_cluster(cluster_name, entry) for entry in raw_list
-            ]
-        return clusters
+            return [self._parse_org_cluster(cluster_name, entry) for entry in raw_list]
 
     async def get_org_cluster(
         self,
@@ -1642,9 +1647,9 @@ class AdminClientBase:
             "maintenance": org_cluster.maintenance,
         }
         if org_cluster.quota.total_running_jobs is not None:
-            payload["quota"][
-                "total_running_jobs"
-            ] = org_cluster.quota.total_running_jobs
+            payload["quota"]["total_running_jobs"] = (
+                org_cluster.quota.total_running_jobs
+            )
         if org_cluster.balance.credits is not None:
             payload["balance"]["credits"] = str(org_cluster.balance.credits)
         if org_cluster.balance.spent_credits is not None:
@@ -1652,9 +1657,9 @@ class AdminClientBase:
         if org_cluster.default_credits:
             payload["default_credits"] = str(org_cluster.default_credits)
         if org_cluster.default_quota.total_running_jobs is not None:
-            payload["default_quota"][
-                "total_running_jobs"
-            ] = org_cluster.default_quota.total_running_jobs
+            payload["default_quota"]["total_running_jobs"] = (
+                org_cluster.default_quota.total_running_jobs
+            )
         async with self._request(
             "PUT",
             f"clusters/{org_cluster.cluster_name}/orgs/{org_cluster.org_name}",
@@ -1676,7 +1681,7 @@ class AdminClientBase:
         self,
         cluster_name: str,
         org_name: str,
-        default_quota: Quota = Quota(),
+        default_quota: Quota = _EMPTY_QUOTA,
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> OrgCluster:
@@ -1806,8 +1811,7 @@ class AdminClientBase:
         async with self._request("GET", "orgs") as resp:
             resp.raise_for_status()
             orgs_raw = await resp.json()
-            orgs = [self._parse_org_payload(raw_user) for raw_user in orgs_raw]
-        return orgs
+            return [self._parse_org_payload(raw_user) for raw_user in orgs_raw]
 
     async def get_org(self, name: str) -> Org:
         async with self._request("GET", f"orgs/{name}") as resp:
@@ -1984,8 +1988,7 @@ class AdminClientBase:
         ) as resp:
             resp.raise_for_status()
             orgs_raw = await resp.json()
-            orgs = [self._parse_org_user(org_name, raw_user) for raw_user in orgs_raw]
-        return orgs
+            return [self._parse_org_user(org_name, raw_user) for raw_user in orgs_raw]
 
     @overload
     async def get_org_user(
@@ -2296,7 +2299,10 @@ class AdminClientBase:
         }
 
         if project.org_name:
-            url = f"clusters/{project.cluster_name}/orgs/{project.org_name}/projects/{project.name}"
+            url = (
+                f"clusters/{project.cluster_name}/orgs/{project.org_name}"
+                f"/projects/{project.name}"
+            )
         else:
             url = f"clusters/{project.cluster_name}/projects/{project.name}"
 
@@ -2560,9 +2566,10 @@ class AdminClient(AdminClientBase, AdminClientABC):
         trace_configs: Sequence[aiohttp.TraceConfig] = (),
     ):
         if base_url is not None and not base_url:
-            raise ValueError(
+            msg = (
                 "url argument should be http URL or None for secure-less configurations"
             )
+            raise ValueError(msg)
         self._base_url = base_url
         self._service_token = service_token
         self._conn_timeout_s = conn_timeout_s
@@ -2571,11 +2578,16 @@ class AdminClient(AdminClientBase, AdminClientABC):
         self._trace_configs = trace_configs
         self._client: aiohttp.ClientSession | None = None
 
-    async def __aenter__(self) -> AdminClient:
+    async def __aenter__(self) -> Self:
         self._init()
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_typ: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.aclose()
 
     async def connect(self) -> None:
@@ -2633,21 +2645,21 @@ class AdminClientDummy(AdminClientABC):
     DUMMY_CLUSTER = Cluster(
         name="default",
         default_credits=None,
-        default_quota=Quota(),
+        default_quota=_EMPTY_QUOTA,
         default_role=ClusterUserRoleType.USER,
     )
     DUMMY_CLUSTER_USER = ClusterUserWithInfo(
         cluster_name="default",
         user_name="user",
         role=ClusterUserRoleType.ADMIN,
-        quota=Quota(),
-        balance=Balance(),
+        quota=_EMPTY_QUOTA,
+        balance=_EMPTY_BALANCE,
         org_name=None,
         user_info=UserInfo(email="email@examle.com"),
     )
     DUMMY_ORG = Org(
         name="org",
-        balance=Balance(),
+        balance=_EMPTY_BALANCE,
         user_default_credits=None,
         notification_intervals=OrgNotificationIntervals(
             balance_projection_seconds=[
@@ -2668,15 +2680,15 @@ class AdminClientDummy(AdminClientABC):
     DUMMY_ORG_CLUSTER = OrgCluster(
         org_name="org",
         cluster_name="default",
-        balance=Balance(),
-        quota=Quota(),
+        balance=_EMPTY_BALANCE,
+        quota=_EMPTY_QUOTA,
         storage_size=1024,
     )
     DUMMY_ORG_USER = OrgUserWithInfo(
         org_name="org",
         user_name="user",
         role=OrgUserRoleType.ADMIN,
-        balance=Balance(),
+        balance=_EMPTY_BALANCE,
         user_info=UserInfo(email="email@examle.com"),
     )
     DUMMY_PROJECT = Project(
@@ -2696,10 +2708,15 @@ class AdminClientDummy(AdminClientABC):
         user_info=UserInfo(email="email@examle.com"),
     )
 
-    async def __aenter__(self) -> AdminClientDummy:
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_typ: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         pass
 
     async def connect(self) -> None:
@@ -2805,7 +2822,7 @@ class AdminClientDummy(AdminClientABC):
         name: str,
         headers: CIMultiDict[str] | None = None,
         default_credits: Decimal | None = None,
-        default_quota: Quota = Quota(),
+        default_quota: Quota = _EMPTY_QUOTA,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> Cluster:
         return self.DUMMY_CLUSTER
@@ -3015,9 +3032,9 @@ class AdminClientDummy(AdminClientABC):
         self,
         cluster_name: str,
         org_name: str,
-        quota: Quota = Quota(),
-        balance: Balance = Balance(),
-        default_quota: Quota = Quota(),
+        quota: Quota = _EMPTY_QUOTA,
+        balance: Balance = _EMPTY_BALANCE,
+        default_quota: Quota = _EMPTY_QUOTA,
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
         storage_size: int | None = None,
@@ -3048,7 +3065,7 @@ class AdminClientDummy(AdminClientABC):
         self,
         cluster_name: str,
         org_name: str,
-        default_quota: Quota = Quota(),
+        default_quota: Quota = _EMPTY_QUOTA,
         default_credits: Decimal | None = None,
         default_role: ClusterUserRoleType = ClusterUserRoleType.USER,
     ) -> OrgCluster:
