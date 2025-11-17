@@ -29,3 +29,7 @@ lint: format
 .PHONY: test
 test:
 	uv run pytest --cov=neuro_admin_client --cov-report xml:.coverage.xml tests
+
+.PHONY: clean
+clean:
+	git clean -fd
