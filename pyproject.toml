@@ -66,8 +66,6 @@ lines-after-imports = 2
 [tool.pytest]
 addopts=[
     "-vv",
-    "--cov-config=setup.cfg",
-    "--cov-branch",
     "--cov-report=term-missing:skip-covered",
 ]
 asyncio_mode = "auto"
