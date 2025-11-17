@@ -5,6 +5,9 @@ BLACK_TARGETS := $(ISORT_TARGETS)
 MYPY_TARGETS :=  $(ISORT_TARGETS)
 FLAKE8_TARGETS:= $(ISORT_TARGETS)
 
+.PHONY: all
+all: lint test
+
 .PHONY: setup
 setup:
 	uv sync --dev
