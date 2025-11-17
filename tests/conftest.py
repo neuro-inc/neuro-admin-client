@@ -290,9 +290,9 @@ class AdminServer:
         if cluster.default_credits:
             resp["default_credits"] = str(cluster.default_credits)
         if cluster.default_quota.total_running_jobs:
-            resp["default_quota"][
-                "total_running_jobs"
-            ] = cluster.default_quota.total_running_jobs
+            resp["default_quota"]["total_running_jobs"] = (
+                cluster.default_quota.total_running_jobs
+            )
         return resp
 
     def _int_or_none(self, value: str | None) -> int | None:
@@ -796,9 +796,9 @@ class AdminServer:
         if org_cluster.default_credits:
             res["default_credits"] = str(org_cluster.default_credits)
         if org_cluster.default_quota.total_running_jobs:
-            res["default_quota"][
-                "total_running_jobs"
-            ] = org_cluster.default_quota.total_running_jobs
+            res["default_quota"]["total_running_jobs"] = (
+                org_cluster.default_quota.total_running_jobs
+            )
         if org_cluster.storage_size is not None:
             res["storage_size"] = org_cluster.storage_size
         return res

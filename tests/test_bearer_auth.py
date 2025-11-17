@@ -8,12 +8,12 @@ class TestBearerAuth:
         with pytest.raises(ValueError, match="Unexpected authorization scheme"):
             BearerAuth.decode("Basic credentials")
 
-    @pytest.mark.parametrize("header_value", ("Bearer", "Bearer "))
+    @pytest.mark.parametrize("header_value", ["Bearer", "Bearer "])
     def test_decode_no_credentials(self, header_value: str) -> None:
         with pytest.raises(ValueError, match="No credentials"):
             BearerAuth.decode(header_value)
 
-    @pytest.mark.parametrize("token", ("token", "to ken"))
+    @pytest.mark.parametrize("token", ["token", "to ken"])
     def test_decode(self, token: str) -> None:
         auth = BearerAuth.decode("Bearer " + token)
         assert auth == BearerAuth(token=token)

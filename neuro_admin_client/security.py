@@ -6,8 +6,6 @@ from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Union,
     cast,
 )
 
@@ -25,6 +23,7 @@ from aiohttp_security.api import AUTZ_KEY
 from jose import jwt
 from jose.exceptions import JWTError
 
+
 if TYPE_CHECKING:
     from . import AuthClient
 
@@ -32,6 +31,7 @@ from aiohttp.client_exceptions import ClientResponseError
 
 from .bearer_auth import BearerAuth
 from .entities import Permission
+
 
 JWT_IDENTITY_CLAIM = "https://platform.neuromation.io/user"
 JWT_IDENTITY_CLAIM_OPTIONS = ("identity", JWT_IDENTITY_CLAIM)
@@ -42,7 +42,7 @@ NEURO_AUTH_TOKEN_QUERY_PARAM = "neuro-auth-token"
 WS_BEARER = "bearer.apolo.us-"
 
 
-def _extract_claim(identity: Optional[str], claim_name: str) -> Optional[str]:
+def _extract_claim(identity: str | None, claim_name: str) -> str | None:
     if not identity:
         return None
     try:
@@ -57,7 +57,7 @@ def _extract_claim(identity: Optional[str], claim_name: str) -> Optional[str]:
         return None
 
 
-def get_untrusted_user_name(identity: Optional[str]) -> Optional[str]:
+def get_untrusted_user_name(identity: str | None) -> str | None:
     if identity is None:
         return "user"
 
@@ -68,7 +68,7 @@ def get_untrusted_user_name(identity: Optional[str]) -> Optional[str]:
     return None
 
 
-def get_job_id_from_identity(identity: Optional[str]) -> Optional[str]:
+def get_job_id_from_identity(identity: str | None) -> str | None:
     return _extract_claim(identity, JWT_JOB_ID_CLAIM)
 
 
@@ -81,13 +81,14 @@ def get_kind(identity: str) -> Kind:
 
 
 async def check_permissions(
-    request: web.Request, permissions: Sequence[Union[Permission, Sequence[Permission]]]
+    request: web.Request, permissions: Sequence[Permission | Sequence[Permission]]
 ) -> None:
     user_name = await check_authorized(request)  # current implementation uses
     # get_untrusted_user_name function
     auth_policy = request.config_dict.get(AUTZ_KEY)
     if not auth_policy:
-        raise RuntimeError("Auth policy not configured")
+        msg = "Auth policy not configured"
+        raise RuntimeError(msg)
     assert isinstance(auth_policy, AuthPolicy)
 
     try:
@@ -118,12 +119,12 @@ class IdentityPolicy(AbstractIdentityPolicy):
     def __init__(
         self,
         auth_scheme: AuthScheme = AuthScheme.BEARER,
-        default_identity: Optional[str] = None,
+        default_identity: str | None = None,
     ) -> None:
         self._auth_scheme = auth_scheme
         self._default_identity = default_identity
 
-    async def identify(self, request: Request) -> Optional[str]:
+    async def identify(self, request: Request) -> str | None:
         header_identity = request.headers.get(AUTHORIZATION)
 
         if header_identity is None:
@@ -146,13 +147,12 @@ class IdentityPolicy(AbstractIdentityPolicy):
     ) -> None:  # pragma: no cover
         pass
 
-    def _extract_ws_identity(self, request: Request) -> Optional[str]:
+    def _extract_ws_identity(self, request: Request) -> str | None:
         ws_subprotocol = request.headers.get(SEC_WEBSOCKET_PROTOCOL)
         if ws_subprotocol is not None:
             for part in ws_subprotocol.strip().split(" "):
                 if part.lower().startswith(WS_BEARER):
-                    ws_identity = part[len(WS_BEARER) :]
-                    return ws_identity
+                    return part[len(WS_BEARER) :]
         return None
 
 
@@ -160,7 +160,7 @@ class AuthPolicy(AbstractAuthorizationPolicy):
     def __init__(self, auth_client: AuthClient) -> None:
         self._auth_client = auth_client
 
-    async def authorized_userid(self, identity: str) -> Optional[str]:
+    async def authorized_userid(self, identity: str) -> str | None:
         name = get_untrusted_user_name(identity)
         if not name:
             return None
@@ -174,8 +174,8 @@ class AuthPolicy(AbstractAuthorizationPolicy):
 
     async def permits(
         self,
-        identity: Optional[str],
-        permission: Union[str, Enum],
+        identity: str | None,
+        permission: str | Enum,
         context: Any = None,
     ) -> bool:
         name = get_untrusted_user_name(identity)
@@ -186,7 +186,7 @@ class AuthPolicy(AbstractAuthorizationPolicy):
     async def get_missing_permissions(
         self,
         user_name: str,
-        permissions: Sequence[Union[Permission, Sequence[Permission]]],
+        permissions: Sequence[Permission | Sequence[Permission]],
     ) -> Sequence[Permission]:
         return await self._auth_client.get_missing_permissions(user_name, permissions)
 

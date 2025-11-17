@@ -15,11 +15,14 @@ class BearerAuth:
         try:
             auth_scheme, token = header_value.split(" ", 1)
         except ValueError:
-            raise ValueError("No credentials")
+            msg = "No credentials"
+            raise ValueError(msg) from None
         if auth_scheme.lower() != "bearer":
-            raise ValueError("Unexpected authorization scheme")
+            msg = "Unexpected authorization scheme"
+            raise ValueError(msg)
         if not token:
-            raise ValueError("No credentials")
+            msg = "No credentials"
+            raise ValueError(msg)
         return cls(token=token)
 
     def encode(self) -> str:

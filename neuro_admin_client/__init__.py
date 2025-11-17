@@ -15,6 +15,7 @@ from .security import (
     get_untrusted_user_name,
 )
 
+
 __all__ = [
     "AuthClient",
     "check_permissions",
