@@ -713,6 +713,7 @@ class AdminClientABC(abc.ABC):
         org_name: str | None,
         is_default: bool = False,
         default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
+        has_virtual_kube: bool | None = None,
     ) -> Project: ...
 
     @abstractmethod
@@ -2239,6 +2240,7 @@ class AdminClientBase:
             org_name=payload["org_name"],
             is_default=payload["is_default"],
             default_role=ProjectUserRoleType(payload["default_role"]),
+            has_virtual_kube=payload.get("has_virtual_kube", False),
         )
 
     async def create_project(
@@ -2248,6 +2250,7 @@ class AdminClientBase:
         org_name: str | None,
         is_default: bool = False,
         default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
+        has_virtual_kube: bool | None = None,
         headers: CIMultiDict[str] | None = None,
     ) -> Project:
         payload = {
@@ -2255,6 +2258,8 @@ class AdminClientBase:
             "is_default": is_default,
             "default_role": default_role,
         }
+        if has_virtual_kube is not None:
+            payload["has_virtual_kube"] = has_virtual_kube
 
         if org_name:
             url = f"clusters/{cluster_name}/orgs/{org_name}/projects"
@@ -3372,6 +3377,7 @@ class AdminClientDummy(AdminClientABC):
         org_name: str | None,
         is_default: bool = False,
         default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER,
+        has_virtual_kube: bool | None = None,
     ) -> Project:
         return self.DUMMY_PROJECT
 
