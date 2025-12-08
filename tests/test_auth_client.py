@@ -180,3 +180,8 @@ class TestAuthClient:
     ) -> None:
         token = jwt.encode({"key": "value"}, "secret")
         assert auth_client.get_unverified_username(token) is None
+
+    async def test_get_unverified_username_non_jwt(
+        self, auth_client: AuthClient
+    ) -> None:
+        assert auth_client.get_unverified_username("non-jwt") is None
