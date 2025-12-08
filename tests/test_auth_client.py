@@ -169,6 +169,14 @@ class TestAuthClient:
 
         assert result == []
 
-    async def test_get_unverified_username(self, auth_client: AuthClient) -> None:
-        token = jwt.encode({JWT_IDENTITY_CLAIM: "uname"}, "seret")
+    async def test_get_unverified_username_exists(
+        self, auth_client: AuthClient
+    ) -> None:
+        token = jwt.encode({JWT_IDENTITY_CLAIM: "uname"}, "secret")
         assert auth_client.get_unverified_username(token) == "uname"
+
+    async def test_get_unverified_username_missing(
+        self, auth_client: AuthClient
+    ) -> None:
+        token = jwt.encode({"key": "value"}, "secret")
+        assert auth_client.get_unverified_username(token) is None
