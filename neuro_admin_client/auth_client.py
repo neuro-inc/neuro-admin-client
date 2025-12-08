@@ -6,6 +6,8 @@ from typing import Any, TypeVar
 
 import aiohttp
 from aiohttp.hdrs import AUTHORIZATION
+from jose import jwt
+from jose.exceptions import JWTError
 from multidict import CIMultiDict
 from typing_extensions import Self
 from yarl import URL
@@ -17,6 +19,7 @@ from neuro_admin_client.entities import (
 )
 
 from .admin_client import AdminClient
+from .security import JWT_IDENTITY_CLAIM_OPTIONS
 
 
 T = TypeVar("T")
@@ -64,6 +67,16 @@ class AuthClient:
     @property
     def is_anonymous_access_allowed(self) -> bool:
         return self._url is None
+
+    def get_unverified_username(self, token: str) -> str | None:
+        try:
+            claims = jwt.get_unverified_claims(token)
+            for identity_claim in JWT_IDENTITY_CLAIM_OPTIONS:
+                if claim := claims.get(identity_claim):
+                    return str(claim)
+            return None
+        except JWTError:
+            return None
 
     async def check_user_permissions(
         self,

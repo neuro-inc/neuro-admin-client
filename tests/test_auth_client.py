@@ -2,6 +2,7 @@ from contextlib import nullcontext as does_not_raise
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from jose import jwt
 from yarl import URL
 
 from neuro_admin_client import (
@@ -9,6 +10,7 @@ from neuro_admin_client import (
     Permission,
 )
 from neuro_admin_client.entities import Action, User
+from neuro_admin_client.security import JWT_IDENTITY_CLAIM
 
 
 class TestAction:
@@ -166,3 +168,20 @@ class TestAuthClient:
             )
 
         assert result == []
+
+    async def test_get_unverified_username_exists(
+        self, auth_client: AuthClient
+    ) -> None:
+        token = jwt.encode({JWT_IDENTITY_CLAIM: "uname"}, "secret")
+        assert auth_client.get_unverified_username(token) == "uname"
+
+    async def test_get_unverified_username_missing(
+        self, auth_client: AuthClient
+    ) -> None:
+        token = jwt.encode({"key": "value"}, "secret")
+        assert auth_client.get_unverified_username(token) is None
+
+    async def test_get_unverified_username_non_jwt(
+        self, auth_client: AuthClient
+    ) -> None:
+        assert auth_client.get_unverified_username("non-jwt") is None
