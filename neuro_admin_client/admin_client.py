@@ -2241,6 +2241,7 @@ class AdminClientBase:
             is_default=payload["is_default"],
             default_role=ProjectUserRoleType(payload["default_role"]),
             has_virtual_kube=payload.get("has_virtual_kube", False),
+            is_virtual_kube_ready=payload.get("is_virtual_kube_ready", False),
         )
 
     async def create_project(
