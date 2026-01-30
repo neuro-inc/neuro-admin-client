@@ -226,6 +226,7 @@ class Project:
     is_default: bool = False  # Enables auto add new tenant users to thi project
     default_role: ProjectUserRoleType = ProjectUserRoleType.WRITER
     has_virtual_kube: bool = False
+    is_virtual_kube_ready: bool = False
 
 
 @dataclass(frozen=True)
