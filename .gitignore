@@ -131,3 +131,4 @@ dmypy.json
 .idea
 
 uv.lock
+/.codex/config.toml
