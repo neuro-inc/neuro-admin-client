@@ -67,6 +67,8 @@ class AdminServer:
     project_users: list[ProjectUser] = field(default_factory=list)
 
     last_skip_auto_add_to_clusters: bool = False
+    last_permission_check_name: str | None = None
+    missing_permissions: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def url(self) -> URL:
@@ -1222,7 +1224,11 @@ class AdminServer:
         raise aiohttp.web.HTTPNotFound
 
     async def handle_user_check_permissions(self, request: web.Request) -> web.Response:
-        return web.json_response({"missing": []}, status=200)
+        self.last_permission_check_name = request.match_info["name"]
+        return web.json_response(
+            {"missing": self.missing_permissions},
+            status=403 if self.missing_permissions else 200,
+        )
 
     async def handle_verify_token(self, request: web.Request) -> web.Response:
         return web.json_response({"verified": True}, status=200)

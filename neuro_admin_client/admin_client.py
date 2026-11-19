@@ -870,6 +870,7 @@ class AdminClientBase:
         json: dict[str, Any] | list[dict[str, Any]] | None = None,
         params: Query | None = None,
         headers: CIMultiDict[str] | None = None,
+        raise_for_status: bool = True,
     ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         pass
 
@@ -1160,8 +1161,10 @@ class AdminClientBase:
     async def get_missing_permissions(
         self, name: str, payload: list[dict[str, Any]]
     ) -> Sequence[Permission]:
-        path = f"users/{name}/permissions/check"
-        async with self._request("POST", path, json=payload) as resp:
+        path = f"{self._get_user_path(name)}/permissions/check"
+        async with self._request(
+            "POST", path, json=payload, raise_for_status=False
+        ) as resp:
             if resp.status not in (200, 403):
                 await _raise_for_status(resp)
             data = await resp.json()
@@ -2631,6 +2634,7 @@ class AdminClient(AdminClientBase, AdminClientABC):
         path: str,
         *,
         params: Query | None = None,
+        raise_for_status: bool = True,
         **kwargs: Any,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         assert self._client
@@ -2639,7 +2643,8 @@ class AdminClient(AdminClientBase, AdminClientABC):
         if params:
             url = url.with_query(params)
         async with self._client.request(method, url, **kwargs) as response:
-            response.raise_for_status()
+            if raise_for_status:
+                response.raise_for_status()
             yield response
 
 

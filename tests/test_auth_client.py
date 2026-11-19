@@ -12,6 +12,8 @@ from neuro_admin_client import (
 from neuro_admin_client.entities import Action, User
 from neuro_admin_client.security import JWT_IDENTITY_CLAIM
 
+from .conftest import AdminServer
+
 
 class TestAction:
     def test_str(self) -> None:
@@ -81,21 +83,41 @@ class TestAuthClient:
         user_token = await auth_client.get_user_token(name="alice", job_id="test-job")
         assert user_token == "mock_token"
 
-    async def test_check_user_permissions(self, auth_client: AuthClient) -> None:
+    @pytest.mark.parametrize(
+        ("name", "encoded_name"),
+        [
+            ("alice", "alice"),
+            ("alice/service-accounts/ci", "alice:service-accounts:ci"),
+            (
+                "alice/service-accounts/ci/service-accounts/nested",
+                "alice:service-accounts:ci:service-accounts:nested",
+            ),
+        ],
+    )
+    async def test_check_user_permissions(
+        self,
+        auth_client: AuthClient,
+        mock_admin_server: AdminServer,
+        name: str,
+        encoded_name: str,
+    ) -> None:
         permissions = [
             Permission(uri="storage://test-cluster/user/folder", action=Action.READ)
         ]
-        result = await auth_client.check_user_permissions("alice", permissions)
-        assert isinstance(result, bool)
+        assert await auth_client.check_user_permissions(name, permissions)
+        assert mock_admin_server.last_permission_check_name == encoded_name
 
-    async def test_get_missing_permissions(self, auth_client: AuthClient) -> None:
-        permissions = [
-            Permission(uri="storage://test-cluster/user/folder", action="read")
+    async def test_get_missing_permissions(
+        self, auth_client: AuthClient, mock_admin_server: AdminServer
+    ) -> None:
+        uri = "storage://test-cluster/user/folder"
+        permission = Permission(uri=uri, action=Action.READ)
+        mock_admin_server.missing_permissions = [{"uri": uri, "action": "read"}]
+        name = "alice/service-accounts/ci/service-accounts/nested"
+        assert await auth_client.get_missing_permissions(name, [permission]) == [
+            permission
         ]
-        missing = await auth_client.get_missing_permissions("alice", permissions)
-        assert isinstance(missing, list)
-        for perm in missing:
-            assert isinstance(perm, Permission)
+        assert not await auth_client.check_user_permissions(name, [permission])
 
     async def test_ping(self, auth_client: AuthClient) -> None:
         await auth_client.ping()
