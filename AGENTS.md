@@ -8,10 +8,16 @@ For a checkout under `.worktrees/<task>/<repository>`, check `../../../apolo-age
 For other layouts, locate the harness from a valid `config_file` path in `.codex/config.toml`.
 If that path is unavailable, use the workspace's designated harness checkout.
 
-Run `make setup-check` from the harness checkout to check the local setup.
-If setup is missing or stale, run `make setup` with the same arguments.
-Pass the directory containing this service checkout as `--workspace` and select this service with `--repo` in `SETUP_ARGS`.
-For the workspace root, pass that directory as `--workspace` and omit `--repo`.
+To check only the current service, run this command from the harness checkout.
+Replace `<service-parent>` with the directory containing the service checkout.
+Replace `<service-name>` with the name of the checkout directory.
+
+```sh
+make setup-check SETUP_ARGS='--workspace "<service-parent>" --repo "<service-name>"'
+```
+
+If the check reports missing or stale setup, run `make setup` with the same arguments.
+For workspace-wide setup, see the harness README.
 Then read `instructions/AGENTS.md` in the harness and follow its relevant guidance.
 If the harness is unavailable, report that limitation and follow the available repository instructions.
 Keep service-specific rules outside this managed block.
