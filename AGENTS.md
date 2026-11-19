@@ -8,7 +8,8 @@ For a checkout under `.worktrees/<task>/<repository>`, check `../../../apolo-age
 For other layouts, locate the harness from a valid `config_file` path in `.codex/config.toml`.
 If that path is unavailable, use the workspace's designated harness checkout.
 
-If the generated role paths in `.codex/config.toml` are missing or stale, run `make setup` from the harness checkout.
+Run `make setup-check` from the harness checkout to check the local setup.
+If setup is missing or stale, run `make setup` with the same arguments.
 Pass the directory containing this service checkout as `--workspace` and select this service with `--repo` in `SETUP_ARGS`.
 For the workspace root, pass that directory as `--workspace` and omit `--repo`.
 Then read `instructions/AGENTS.md` in the harness and follow its relevant guidance.

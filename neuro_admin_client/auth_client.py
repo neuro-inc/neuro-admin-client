@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import asdict
 from typing import Any, TypeVar
 
 import aiohttp
@@ -104,16 +103,17 @@ class AuthClient:
             else:
                 flat_permissions.extend(p)
 
-        payload: list[dict[str, Any]] = [
-            {
-                **(d := asdict(p)),
-                "uri": str(d["uri"]) if isinstance(d.get("uri"), URL) else d["uri"],
-            }
-            for p in flat_permissions
-        ]
-        return await self._admin_client.get_missing_permissions(
-            name=name, payload=payload
+        missing = await self._admin_client.get_missing_permissions(
+            name=name, payload=[p.to_payload() for p in flat_permissions]
         )
+        missing_set = set(missing)
+        required: set[Permission] = set()
+        for permission in permissions:
+            if isinstance(permission, Permission):
+                required.add(permission)
+            elif missing_set.issuperset(permission):
+                required.update(permission)
+        return [permission for permission in missing if permission in required]
 
     async def verify_token(self, name: str, token: str) -> None:
         if self._url is None:

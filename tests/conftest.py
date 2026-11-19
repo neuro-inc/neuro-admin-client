@@ -68,6 +68,7 @@ class AdminServer:
 
     last_skip_auto_add_to_clusters: bool = False
     last_permission_check_name: str | None = None
+    permission_check_evaluated: bool = True
     missing_permissions: list[dict[str, str]] = field(default_factory=list)
 
     @property
@@ -1228,6 +1229,9 @@ class AdminServer:
         return web.json_response(
             {"missing": self.missing_permissions},
             status=403 if self.missing_permissions else 200,
+            headers={"X-Apolo-Permissions-Evaluated": "true"}
+            if self.permission_check_evaluated
+            else None,
         )
 
     async def handle_verify_token(self, request: web.Request) -> web.Response:

@@ -2,6 +2,7 @@ from contextlib import nullcontext as does_not_raise
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from aiohttp import ClientResponseError
 from jose import jwt
 from yarl import URL
 
@@ -118,6 +119,32 @@ class TestAuthClient:
             permission
         ]
         assert not await auth_client.check_user_permissions(name, [permission])
+
+    async def test_caller_denial_is_not_a_permission_result(
+        self, auth_client: AuthClient, mock_admin_server: AdminServer
+    ) -> None:
+        permission = Permission(uri="user://alice", action=Action.READ)
+        mock_admin_server.missing_permissions = [permission.to_payload()]
+        mock_admin_server.permission_check_evaluated = False
+        with pytest.raises(ClientResponseError, match="403"):
+            await auth_client.get_missing_permissions("alice", [permission])
+
+    async def test_missing_alternatives_preserve_required_permissions(
+        self, auth_client: AuthClient, mock_admin_server: AdminServer
+    ) -> None:
+        granted = Permission(uri="storage://cluster/allowed", action=Action.READ)
+        missing = Permission(uri="storage://cluster/path//missing/", action=Action.READ)
+        required = Permission(uri="storage://cluster/required", action=Action.READ)
+        mock_admin_server.missing_permissions = [
+            {"uri": "storage://cluster/path/missing", "action": "read"},
+            required.to_payload(),
+        ]
+        assert await auth_client.get_missing_permissions(
+            "alice", [[granted, missing], required]
+        ) == [required]
+        assert await auth_client.get_missing_permissions(
+            "alice", [[missing, required]]
+        ) == [missing, required]
 
     async def test_ping(self, auth_client: AuthClient) -> None:
         await auth_client.ping()

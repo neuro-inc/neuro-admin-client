@@ -1165,14 +1165,27 @@ class AdminClientBase:
         async with self._request(
             "POST", path, json=payload, raise_for_status=False
         ) as resp:
-            if resp.status not in (200, 403):
+            evaluated = resp.headers.get("X-Apolo-Permissions-Evaluated") == "true"
+            if resp.status != 200 and not (resp.status == 403 and evaluated):
                 await _raise_for_status(resp)
+                msg = "Unexpected permission check status"
+                raise ValueError(msg)
             data = await resp.json()
-            if "missing" not in data:
-                assert resp.status == 403, f"unexpected response {resp.status}: {data}"
-                await _raise_for_status(resp)
-
-            return [Permission.from_payload(p) for p in data["missing"]]
+            if not isinstance(data, dict) or not isinstance(data.get("missing"), list):
+                msg = "Invalid permission check response"
+                raise ValueError(msg)
+            missing = {Permission.from_payload(p) for p in data["missing"]}
+            requested = [Permission.from_payload(p) for p in payload]
+            keyed = {
+                permission: _permission_check_key(permission)
+                for permission in requested
+            }
+            if bool(missing) != (resp.status == 403) or not missing <= set(
+                keyed.values()
+            ):
+                msg = "Invalid missing permissions"
+                raise ValueError(msg)
+            return [permission for permission, key in keyed.items() if key in missing]
 
     async def add_user(self, payload: dict[str, Any]) -> User:
         path = "users"
@@ -3527,6 +3540,15 @@ class AdminClientDummy(AdminClientABC):
         user_name: str | None = None,
     ) -> None:
         pass
+
+
+def _permission_check_key(permission: Permission) -> Permission:
+    uri = permission.uri
+    path = uri.path
+    if path != "/" and ("//" in path or path.endswith("/")):
+        path = "/" + "/".join(part for part in path.split("/") if part)
+        return Permission(uri.with_path(path), permission.action)
+    return permission
 
 
 async def _raise_for_status(resp: aiohttp.ClientResponse) -> None:
