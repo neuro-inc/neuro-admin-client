@@ -2,7 +2,9 @@ from contextlib import nullcontext as does_not_raise
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from aiohttp import ClientResponseError, web
 from jose import jwt
+from pytest_aiohttp.plugin import AiohttpServer
 from yarl import URL
 
 from neuro_admin_client import (
@@ -11,6 +13,8 @@ from neuro_admin_client import (
 )
 from neuro_admin_client.entities import Action, User
 from neuro_admin_client.security import JWT_IDENTITY_CLAIM
+
+from .conftest import AdminServer
 
 
 class TestAction:
@@ -81,21 +85,102 @@ class TestAuthClient:
         user_token = await auth_client.get_user_token(name="alice", job_id="test-job")
         assert user_token == "mock_token"
 
-    async def test_check_user_permissions(self, auth_client: AuthClient) -> None:
+    @pytest.mark.parametrize(
+        ("name", "encoded_name"),
+        [
+            ("alice", "alice"),
+            ("alice/service-accounts/ci", "alice:service-accounts:ci"),
+            (
+                "alice/service-accounts/ci/service-accounts/nested",
+                "alice:service-accounts:ci:service-accounts:nested",
+            ),
+        ],
+    )
+    async def test_check_user_permissions(
+        self,
+        auth_client: AuthClient,
+        mock_admin_server: AdminServer,
+        name: str,
+        encoded_name: str,
+    ) -> None:
         permissions = [
             Permission(uri="storage://test-cluster/user/folder", action=Action.READ)
         ]
-        result = await auth_client.check_user_permissions("alice", permissions)
-        assert isinstance(result, bool)
+        assert await auth_client.check_user_permissions(name, permissions)
+        assert mock_admin_server.last_permission_check_name == encoded_name
 
-    async def test_get_missing_permissions(self, auth_client: AuthClient) -> None:
-        permissions = [
-            Permission(uri="storage://test-cluster/user/folder", action="read")
+    async def test_get_missing_permissions(
+        self, auth_client: AuthClient, mock_admin_server: AdminServer
+    ) -> None:
+        uri = "storage://test-cluster/user/folder"
+        permission = Permission(uri=uri, action=Action.READ)
+        mock_admin_server.missing_permissions = [{"uri": uri, "action": "read"}]
+        name = "alice/service-accounts/ci/service-accounts/nested"
+        assert await auth_client.get_missing_permissions(name, [permission]) == [
+            permission
         ]
-        missing = await auth_client.get_missing_permissions("alice", permissions)
-        assert isinstance(missing, list)
-        for perm in missing:
-            assert isinstance(perm, Permission)
+        assert not await auth_client.check_user_permissions(name, [permission])
+
+    async def test_caller_denial_is_not_a_permission_result(
+        self, auth_client: AuthClient, mock_admin_server: AdminServer
+    ) -> None:
+        permission = Permission(uri="user://alice", action=Action.READ)
+        mock_admin_server.missing_permissions = [permission.to_payload()]
+        mock_admin_server.permission_check_evaluated = False
+        with pytest.raises(ClientResponseError, match="403"):
+            await auth_client.get_missing_permissions("alice", [permission])
+
+    @pytest.mark.parametrize(
+        ("status", "payload", "message"),
+        [
+            (202, {"missing": []}, "Unexpected permission check status"),
+            (200, {"missing": None}, "Invalid permission check response"),
+            (
+                403,
+                {"missing": [{"uri": "storage://cluster/other", "action": "read"}]},
+                "Invalid missing permissions",
+            ),
+            (403, {"missing": []}, "Invalid missing permissions"),
+        ],
+    )
+    async def test_rejects_invalid_permission_result(
+        self,
+        aiohttp_server: AiohttpServer,
+        status: int,
+        payload: dict[str, object],
+        message: str,
+    ) -> None:
+        async def respond(request: web.Request) -> web.Response:
+            return web.json_response(
+                payload,
+                status=status,
+                headers={"X-Apolo-Permissions-Evaluated": "true"},
+            )
+
+        app = web.Application()
+        app.router.add_post("/users/alice/permissions/check", respond)
+        server = await aiohttp_server(app)
+        permission = Permission(uri="storage://cluster/requested", action=Action.READ)
+        async with AuthClient(server.make_url("/"), token="") as client:
+            with pytest.raises(ValueError, match=message):
+                await client.get_missing_permissions("alice", [permission])
+
+    async def test_missing_alternatives_preserve_required_permissions(
+        self, auth_client: AuthClient, mock_admin_server: AdminServer
+    ) -> None:
+        granted = Permission(uri="storage://cluster/allowed", action=Action.READ)
+        missing = Permission(uri="storage://cluster/path//missing/", action=Action.READ)
+        required = Permission(uri="storage://cluster/required", action=Action.READ)
+        mock_admin_server.missing_permissions = [
+            {"uri": "storage://cluster/path/missing", "action": "read"},
+            required.to_payload(),
+        ]
+        assert await auth_client.get_missing_permissions(
+            "alice", [[granted, missing], required]
+        ) == [required]
+        assert await auth_client.get_missing_permissions(
+            "alice", [[missing, required]]
+        ) == [missing, required]
 
     async def test_ping(self, auth_client: AuthClient) -> None:
         await auth_client.ping()
