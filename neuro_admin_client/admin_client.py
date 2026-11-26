@@ -1158,6 +1158,25 @@ class AdminClientBase:
         name = name.replace("/", ":")
         return f"users/{name}"
 
+    async def get_user_permissions(self, name: str) -> list[Permission]:
+        path = f"{self._get_user_path(name)}/permissions"
+        async with self._request("GET", path, raise_for_status=False) as resp:
+            if resp.status != 200:
+                await _raise_for_status(resp)
+                msg = "Unexpected permission listing status"
+                raise ValueError(msg)
+            payload = await resp.json()
+        grants = payload.get("permissions") if isinstance(payload, dict) else None
+        if not isinstance(grants, list) or any(
+            not isinstance(grant, dict)
+            or not isinstance(grant.get("uri"), str)
+            or not isinstance(grant.get("action"), str)
+            for grant in grants
+        ):
+            msg = "Invalid permission listing response"
+            raise ValueError(msg)
+        return [Permission.from_payload(grant) for grant in grants]
+
     async def get_missing_permissions(
         self, name: str, payload: list[dict[str, Any]]
     ) -> Sequence[Permission]:
