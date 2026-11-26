@@ -1,3 +1,4 @@
+import aiohttp
 import pytest
 from aiohttp import web
 from pytest_aiohttp.plugin import AiohttpServer
@@ -46,3 +47,19 @@ async def test_rejects_invalid_permission_listing(
     async with AdminClient(base_url=server.make_url("/")) as admin:
         with pytest.raises(ValueError, match="Invalid permission listing response"):
             await admin.get_user_permissions("alice")
+
+
+async def test_raises_for_permission_listing_error(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def respond(request: web.Request) -> web.Response:
+        return web.json_response({"error": "User not found"}, status=404)
+
+    app = web.Application()
+    app.router.add_get("/users/alice/permissions", respond)
+    server = await aiohttp_server(app)
+    async with AdminClient(base_url=server.make_url("/")) as admin:
+        with pytest.raises(aiohttp.ClientResponseError) as exc_info:
+            await admin.get_user_permissions("alice")
+    assert exc_info.value.status == 404
+    assert exc_info.value.message == "User not found"
